@@ -1,21 +1,44 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>青井直次郎、セキュリティロック解除　報告メール</title>
+
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
     body {
       margin: 0;
+      min-height: 100%;
+    }
+
+    body {
       min-height: 100vh;
+      padding: 16px;
       background: #e9eef3;
+      color: #222;
       font-family: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 16px;
-      color: #222;
+    }
+
+    body.drag-lock {
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      -webkit-tap-highlight-color: transparent;
     }
 
     .app {
@@ -24,59 +47,64 @@
     }
 
     .mail {
+      width: 100%;
+      overflow: hidden;
       background: #fff;
       border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 20px 42px rgba(0, 0, 0, 0.18);
       transition: transform 0.5s ease, opacity 0.5s ease;
     }
 
     .mail.sending {
       transform: translateY(-16px);
-      opacity: 0.52;
+      opacity: 0.5;
     }
 
     .header {
+      padding: 16px 18px;
       background: #2f3542;
       color: #fff;
-      padding: 16px 18px;
-      font-weight: bold;
       font-size: 18px;
+      font-weight: 700;
+      line-height: 1.5;
     }
 
     .row {
       display: flex;
+      align-items: center;
       gap: 12px;
       padding: 12px 18px;
-      border-bottom: 1px solid #e3e7ec;
-      align-items: center;
       background: #fff;
+      border-bottom: 1px solid #e2e7ed;
     }
 
     .label {
       width: 84px;
+      flex: 0 0 84px;
       color: #68707a;
-      flex-shrink: 0;
       font-size: 14px;
     }
 
     .value {
+      min-width: 0;
       flex: 1;
       font-size: 15px;
-      word-break: break-word;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
     }
 
     textarea {
+      display: block;
       width: 100%;
       min-height: 180px;
-      border: none;
-      outline: none;
+      padding: 0;
+      border: 0;
+      outline: 0;
       resize: vertical;
-      font-size: 15px;
-      line-height: 1.7;
-      font-family: inherit;
       background: transparent;
       color: #222;
+      font-size: 15px;
+      line-height: 1.8;
     }
 
     .footer {
@@ -89,349 +117,396 @@
     }
 
     .status {
-      min-height: 20px;
+      min-height: 21px;
       color: #68707a;
       font-size: 14px;
     }
 
-    button {
-      font-family: inherit;
-    }
-
-    .sendBtn,
-    .notifyBtn,
-    .closeBtn,
-    .hintBtn,
-    .xPostBtn,
-    .attachOpenBtn,
-    .resetKeyBtn,
-    .closePuzzleBtn {
-      border: none;
+    .send-button,
+    .notification,
+    .modal-close,
+    .hint-button,
+    .attachment-button,
+    .x-button,
+    .puzzle-reset,
+    .puzzle-close {
+      border: 0;
       border-radius: 10px;
       cursor: pointer;
       transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
     }
 
-    .sendBtn:hover,
-    .notifyBtn:hover,
-    .closeBtn:hover,
-    .hintBtn:hover,
-    .xPostBtn:hover,
-    .attachOpenBtn:hover,
-    .resetKeyBtn:hover,
-    .closePuzzleBtn:hover {
+    .send-button:hover,
+    .notification:hover,
+    .modal-close:hover,
+    .hint-button:hover,
+    .attachment-button:hover,
+    .x-button:hover,
+    .puzzle-reset:hover,
+    .puzzle-close:hover {
       transform: translateY(-1px);
     }
 
-    .sendBtn {
+    .send-button {
+      min-width: 112px;
+      padding: 11px 18px;
       background: #1d72f3;
       color: #fff;
-      padding: 11px 18px;
       font-size: 14px;
-      min-width: 110px;
     }
 
-    .sendBtn:disabled {
-      background: #b8c7df;
+    .send-button:disabled {
+      background: #b9c7da;
       cursor: not-allowed;
       transform: none;
     }
 
-    .notifyWrap {
+    .notification-area {
       margin-top: 16px;
       text-align: center;
     }
 
-    .notifyBtn {
+    .notification {
       display: none;
-      background: #fff;
-      color: #1f2937;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-      padding: 14px 20px;
-      font-size: 15px;
       width: 100%;
       max-width: 360px;
+      padding: 14px 20px;
+      background: #fff;
+      color: #1f2937;
+      font-size: 15px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
     }
 
-    .notifyBtn.show {
+    .notification.show {
       display: inline-block;
+      animation: notice-in 0.28s ease both;
     }
 
-    .fiction {
-      text-align: center;
-      font-size: 12px;
-      color: #6b7280;
+    @keyframes notice-in {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fiction-note {
       margin-top: 14px;
-      line-height: 1.6;
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.7;
+      text-align: center;
     }
 
     .overlay {
       position: fixed;
       inset: 0;
-      background: rgba(20, 28, 38, 0.54);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      padding: 16px;
       z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(20, 28, 38, 0.55);
     }
 
     .overlay.show {
       display: flex;
     }
 
-    .replyModal {
+    .reply-modal {
+      display: flex;
+      flex-direction: column;
       width: 100%;
       max-width: 720px;
       max-height: 90vh;
       overflow: hidden;
-      border-radius: 14px;
       background: #fff;
+      border-radius: 14px;
       box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
-      display: flex;
-      flex-direction: column;
     }
 
-    .modalHeader {
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 18px;
       background: #2f3542;
       color: #fff;
-      padding: 14px 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-weight: bold;
+      font-weight: 700;
     }
 
-    .closeBtn {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fff;
+    .modal-close {
       width: 34px;
       height: 34px;
-      font-size: 18px;
+      padding: 0;
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-size: 19px;
       line-height: 1;
     }
 
-    .replyMeta {
-      border-bottom: 1px solid #e3e7ec;
+    .reply-meta {
       background: #fff;
+      border-bottom: 1px solid #e2e7ed;
     }
 
-    .replyBody {
+    .reply-body {
       padding: 18px;
       overflow-y: auto;
+      overscroll-behavior: contain;
       background: #fff;
     }
 
-    .replyText {
-      white-space: pre-wrap;
-      line-height: 1.9;
-      font-size: 15px;
+    .reply-text {
       min-height: 120px;
       margin: 0;
-      word-break: break-word;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 15px;
+      line-height: 1.9;
     }
 
-    .replyExtras {
-      margin-top: 18px;
+    .reply-extras {
       display: flex;
       flex-direction: column;
-      gap: 12px;
       align-items: center;
+      gap: 12px;
+      margin-top: 18px;
     }
 
-    .attachmentCard {
+    .attachment-card {
       width: 100%;
+      padding: 12px;
+      background: #f8fafc;
       border: 1px solid #d6dde7;
       border-radius: 12px;
-      background: #f8fafc;
-      padding: 12px;
     }
 
-    .attachmentName {
-      font-size: 13px;
-      color: #5b6470;
+    .attachment-name {
       margin-bottom: 10px;
+      color: #5b6470;
+      font-size: 13px;
     }
 
-    .attachmentImg {
-      width: 100%;
-      max-width: 340px;
+    .attachment-image {
       display: block;
+      width: 100%;
+      max-width: 430px;
+      max-height: 330px;
       margin: 0 auto;
-      border-radius: 10px;
-      border: 1px solid #d6dde7;
+      object-fit: contain;
       background: #fff;
+      border: 1px solid #d6dde7;
+      border-radius: 10px;
     }
 
-    .hintBtn,
-    .xPostBtn,
-    .attachOpenBtn,
-    .resetKeyBtn,
-    .closePuzzleBtn {
+    .hint-button,
+    .attachment-button,
+    .x-button,
+    .puzzle-reset,
+    .puzzle-close {
       width: 100%;
-      max-width: 420px;
+      max-width: 430px;
       padding: 12px 16px;
       font-size: 14px;
+      line-height: 1.5;
     }
 
-    .hintBtn {
-      background: #eef4ff;
+    .hint-button {
+      background: #edf3ff;
       color: #1f3f78;
     }
 
-    .attachOpenBtn {
-      background: #edf7ef;
-      color: #1f5c31;
+    .attachment-button {
+      background: #eaf6ed;
+      color: #195d2e;
     }
 
-    .xPostBtn {
+    .x-button {
       background: #111827;
       color: #fff;
     }
 
-    .storyNote {
+    .story-note {
       width: 100%;
+      padding: 10px 12px;
       background: #fff8dd;
+      color: #6b5600;
       border: 1px solid #f2e19b;
       border-radius: 10px;
-      padding: 10px 12px;
       font-size: 13px;
-      color: #6b5600;
       line-height: 1.7;
     }
 
-    /* 画像重ね合わせ謎 */
-    .puzzleOverlay {
+    /* =========================================================
+       画像重ね合わせ謎：ここから
+       ========================================================= */
+
+    .puzzle-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(8, 15, 28, 0.72);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      padding: 16px;
       z-index: 1100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(8, 15, 28, 0.76);
     }
 
-    .puzzleOverlay.show {
+    .puzzle-overlay.show {
       display: flex;
     }
 
-    .puzzleModal {
+    .puzzle-modal {
       width: 100%;
-      max-width: 860px;
+      max-width: 900px;
+      max-height: 96vh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
       background: #fff;
       border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
     }
 
-    .puzzleHead {
+    .puzzle-header {
+      padding: 14px 18px;
       background: #2f3542;
       color: #fff;
-      padding: 14px 18px;
-      font-weight: bold;
+      font-weight: 700;
     }
 
-    .puzzleInner {
+    .puzzle-content {
       padding: 16px;
     }
 
-    .puzzleDesc {
+    .puzzle-description {
       margin: 0 0 14px;
       color: #485260;
       font-size: 14px;
-      line-height: 1.8;
+      line-height: 1.75;
     }
 
-    .puzzleStageWrap {
+    .puzzle-stage-frame {
       width: 100%;
       overflow: hidden;
-      border-radius: 12px;
-      border: 1px solid #d8dee8;
       background: #f4f6f8;
+      border: 1px solid #d8dee8;
+      border-radius: 12px;
     }
 
-    .puzzleStage {
+    .puzzle-stage {
       position: relative;
       width: 100%;
-      aspect-ratio: 4 / 3;
+      aspect-ratio: 16 / 9;
       overflow: hidden;
+      background: #f2f2f2;
       touch-action: none;
       user-select: none;
       -webkit-user-select: none;
-      background: #f5f5f5;
     }
 
-    .paperImage {
+    .puzzle-paper {
       position: absolute;
       inset: 0;
+      z-index: 1;
       width: 100%;
       height: 100%;
-      object-fit: fill;
+      object-fit: contain;
       pointer-events: none;
       user-select: none;
+      -webkit-user-select: none;
       -webkit-user-drag: none;
     }
 
-    .keyImage {
+    .puzzle-key-canvas {
       position: absolute;
-      top: 0;
       left: 0;
-      height: auto;
+      top: 0;
+      z-index: 2;
+      display: block;
+      max-width: none;
       cursor: grab;
       touch-action: none;
       user-select: none;
       -webkit-user-select: none;
-      -webkit-user-drag: none;
-      z-index: 2;
     }
 
-    .keyImage.dragging {
+    .puzzle-key-canvas.dragging {
       cursor: grabbing;
+      filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.25));
     }
 
-    .puzzleActions {
+    .puzzle-key-canvas.snapped {
+      animation: key-snap 0.2s ease both;
+    }
+
+    @keyframes key-snap {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.025); }
+      100% { transform: scale(1); }
+    }
+
+    .puzzle-error {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #fff1f1;
+      color: #8a2525;
+      border: 1px solid #efc3c3;
+      border-radius: 9px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .puzzle-error.show {
+      display: block;
+    }
+
+    .puzzle-actions {
       display: flex;
-      gap: 10px;
       flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
       margin-top: 14px;
     }
 
-    .resetKeyBtn {
-      background: #eef4ff;
+    .puzzle-reset {
+      background: #edf3ff;
       color: #1f3f78;
     }
 
-    .closePuzzleBtn {
-      background: #f3f4f6;
+    .puzzle-close {
+      background: #f0f1f3;
       color: #374151;
     }
 
-    body.dragLock {
-      overflow: hidden;
-      touch-action: none;
-    }
+    /* 画像重ね合わせ謎：ここまで */
 
     @media (max-width: 640px) {
       body {
         align-items: flex-start;
+        padding: 12px;
       }
 
       .header,
-      .modalHeader,
-      .puzzleHead {
+      .modal-header,
+      .puzzle-header {
         font-size: 16px;
       }
 
       .row {
         flex-direction: column;
         align-items: flex-start;
-        gap: 6px;
+        gap: 5px;
       }
 
       .label {
         width: auto;
+        flex-basis: auto;
       }
 
       textarea {
@@ -443,20 +518,31 @@
         align-items: stretch;
       }
 
-      .sendBtn {
+      .send-button {
         width: 100%;
       }
 
-      .replyBody {
-        padding: 16px;
+      .reply-body,
+      .puzzle-content {
+        padding: 14px;
+      }
+
+      .puzzle-overlay {
+        align-items: flex-start;
+        padding: 8px;
+      }
+
+      .puzzle-modal {
+        max-height: calc(100vh - 16px);
       }
     }
   </style>
 </head>
+
 <body>
-  <div class="app">
-    <div id="mailCard" class="mail">
-      <div class="header">青井直次郎、セキュリティロック解除　報告メール</div>
+  <main class="app">
+    <section id="mailCard" class="mail">
+      <header class="header">青井直次郎、セキュリティロック解除　報告メール</header>
 
       <div class="row">
         <div class="label">To</div>
@@ -475,30 +561,30 @@
         </div>
       </div>
 
-      <div class="footer">
-        <div id="status" class="status"></div>
-        <button id="sendBtn" class="sendBtn" disabled>送信する</button>
-      </div>
+      <footer class="footer">
+        <div id="sendStatus" class="status" aria-live="polite"></div>
+        <button id="sendButton" class="send-button" type="button" disabled>送信する</button>
+      </footer>
+    </section>
+
+    <div class="notification-area">
+      <button id="notification" class="notification" type="button">📩 新着メール 1件</button>
     </div>
 
-    <div class="notifyWrap">
-      <button id="notification" type="button" class="notifyBtn">📩 新着メール 1件</button>
-    </div>
-
-    <div class="fiction">
+    <p class="fiction-note">
       本作品はフィクションです。実際の地名・団体・人物とは一切関係ございません。
-    </div>
-  </div>
+    </p>
+  </main>
 
-  <!-- 返信メールポップアップ -->
+  <!-- 返信メール -->
   <div id="replyOverlay" class="overlay" aria-hidden="true">
-    <div class="replyModal">
-      <div class="modalHeader">
-        <span>返信メール</span>
-        <button id="closeReplyBtn" class="closeBtn" type="button" aria-label="閉じる">×</button>
-      </div>
+    <section class="reply-modal" role="dialog" aria-modal="true" aria-labelledby="replyTitle">
+      <header class="modal-header">
+        <span id="replyTitle">返信メール</span>
+        <button id="closeReplyButton" class="modal-close" type="button" aria-label="返信メールを閉じる">×</button>
+      </header>
 
-      <div class="replyMeta">
+      <div class="reply-meta">
         <div class="row">
           <div class="label">From</div>
           <div class="value">N.F@koreha.fiction.da</div>
@@ -509,215 +595,280 @@
         </div>
       </div>
 
-      <div class="replyBody">
-        <p id="replyText" class="replyText"></p>
-        <div id="replyExtras" class="replyExtras"></div>
+      <div class="reply-body">
+        <p id="replyText" class="reply-text"></p>
+        <div id="replyExtras" class="reply-extras"></div>
       </div>
-    </div>
+    </section>
   </div>
 
-  <!-- 画像重ね合わせ謎 -->
-  <div id="puzzleOverlay" class="puzzleOverlay" aria-hidden="true">
-    <div class="puzzleModal">
-      <div class="puzzleHead">添付資料</div>
-      <div class="puzzleInner">
-        <p class="puzzleDesc">
-          紙の上に鍵を重ねて確認してください。<br>
-          数字は自動では表示されません。見えた4桁を自分で読み取り、メール本文から報告してください。
+  <!-- =========================================================
+       画像重ね合わせ謎：添付資料画面
+       ========================================================= -->
+  <div id="puzzleOverlay" class="puzzle-overlay" aria-hidden="true">
+    <section class="puzzle-modal" role="dialog" aria-modal="true" aria-labelledby="puzzleTitle">
+      <header id="puzzleTitle" class="puzzle-header">添付資料</header>
+
+      <div class="puzzle-content">
+        <p class="puzzle-description">
+          鍵を指やマウスで動かし、画像に重ねて確認してください。<br>
+          見えた4桁の数字は、メール画面に戻って報告してください。
         </p>
 
-        <div class="puzzleStageWrap">
-          <div id="puzzleStage" class="puzzleStage">
-            <img id="paperImage" class="paperImage" src="" alt="紙の画像" />
-            <img id="keyImage" class="keyImage" src="" alt="鍵の画像" />
+        <div class="puzzle-stage-frame">
+          <div id="puzzleStage" class="puzzle-stage">
+            <!-- 下に固定する画像 -->
+            <img
+              id="puzzlePaper"
+              class="puzzle-paper"
+              src="file006_謎.jpg"
+              alt="謎の画像"
+              draggable="false"
+            >
+
+            <!-- 上で動かす鍵。透明部分をJavaScriptで自動的に切り抜いて表示します -->
+            <canvas
+              id="puzzleKeyCanvas"
+              class="puzzle-key-canvas"
+              aria-label="動かせる鍵"
+            ></canvas>
           </div>
         </div>
 
-        <div class="puzzleActions">
-          <button id="resetKeyBtn" type="button" class="resetKeyBtn">鍵を最初の位置に戻す</button>
-          <button id="closePuzzleBtn" type="button" class="closePuzzleBtn">資料を閉じる</button>
+        <div id="puzzleError" class="puzzle-error" aria-live="polite"></div>
+
+        <div class="puzzle-actions">
+          <button id="resetKeyButton" class="puzzle-reset" type="button">鍵を最初の位置に戻す</button>
+          <button id="closePuzzleButton" class="puzzle-close" type="button">資料を閉じる</button>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 
   <script>
-    /* =========================
-       変更しやすい設定
-       ========================= */
+    "use strict";
+
+    /* =========================================================
+       調整しやすい設定
+       ========================================================= */
 
     // 4桁の正解数字
     const correctCode = "4631";
 
     // 画像重ね合わせ謎：画像ファイル名
-    const puzzlePaperImage = "paper.png";
-    const puzzleKeyImage = "key.png";
+    const puzzlePaperFile = "file006_謎.jpg";
+    const puzzleKeyFile = "file006_鍵.png";
 
-    // 画像重ね合わせ謎：鍵の表示サイズ（ステージ幅に対する％）
-    const puzzleKeyWidth = 32;
+    // 画像重ね合わせ謎：鍵を時計回りに回転させる角度
+    // 今回の画像は横向きのため、90度にしています。
+    const puzzleKeyRotation = 90;
 
-    // 画像重ね合わせ謎：鍵の初期位置（左上基準・％）
-    const puzzleKeyStart = { x: 6, y: 62 };
+    // 画像重ね合わせ謎：鍵の大きさ
+    // 元画像の大きさを基準にします。小さくしたい場合は0.70などに変更してください。
+    const puzzleKeyScale = 0.75;
 
-    // 画像重ね合わせ謎：鍵の正解位置（左上基準・％）
-    const puzzleKeyTarget = { x: 45, y: 14 };
+    // 画像重ね合わせ謎：鍵の初期位置（左上を基準にした％）
+    const puzzleKeyStart = { x: 5, y: 35 };
 
-    // 画像重ね合わせ謎：正解とみなす範囲（％）
-    const puzzleCorrectRange = 4.5;
+    // 画像重ね合わせ謎：鍵の正解位置（左上を基準にした％）
+    // 実際の見え方に合わせて、xとyを少しずつ調整してください。
+    const puzzleKeyTarget = { x: 42.5, y: 20.5 };
 
-    // 画像重ね合わせ謎：吸着する距離（％）
-    const puzzleSnapDistance = 6.5;
+    // 画像重ね合わせ謎：正解位置と判定する範囲（％）
+    const puzzleCorrectRange = 3.5;
 
-    /* =========================
-       基本設定
-       ========================= */
+    // 画像重ね合わせ謎：正解位置に吸着する距離（％）
+    const puzzleSnapDistance = 6;
 
-    const POST_TEXT_FILE005 =
+    // 返信メールの文字表示速度。数字を小さくすると速くなります。
+    const typingSpeed = 24;
+
+    /* =========================================================
+       X投稿文
+       ========================================================= */
+
+    const file005PostText =
       "【File005：おりたたみ探偵事務所　セキュリティロック解除】\n" +
       "あなたはパスワードを特定し、\n" +
       "N.Fに報告した\n" +
       "#おりたたみ探偵事務所 #謎解き";
 
-    const POST_TEXT_NF =
+    const nfPostText =
       "【おりたたみ探偵file004】N.Fについて少し知ることができた！\n" +
       "※N.Fについてで聞けるストーリーはネタバレOK◎";
 
+    /* =========================================================
+       要素取得
+       ========================================================= */
+
     const mailCard = document.getElementById("mailCard");
     const mailInput = document.getElementById("mailInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const statusEl = document.getElementById("status");
-    const notificationBtn = document.getElementById("notification");
+    const sendButton = document.getElementById("sendButton");
+    const sendStatus = document.getElementById("sendStatus");
+    const notification = document.getElementById("notification");
 
     const replyOverlay = document.getElementById("replyOverlay");
-    const closeReplyBtn = document.getElementById("closeReplyBtn");
+    const closeReplyButton = document.getElementById("closeReplyButton");
     const replyText = document.getElementById("replyText");
     const replyExtras = document.getElementById("replyExtras");
 
     const puzzleOverlay = document.getElementById("puzzleOverlay");
     const puzzleStage = document.getElementById("puzzleStage");
-    const paperImage = document.getElementById("paperImage");
-    const keyImage = document.getElementById("keyImage");
-    const resetKeyBtn = document.getElementById("resetKeyBtn");
-    const closePuzzleBtn = document.getElementById("closePuzzleBtn");
+    const puzzlePaper = document.getElementById("puzzlePaper");
+    const puzzleKeyCanvas = document.getElementById("puzzleKeyCanvas");
+    const puzzleError = document.getElementById("puzzleError");
+    const resetKeyButton = document.getElementById("resetKeyButton");
+    const closePuzzleButton = document.getElementById("closePuzzleButton");
+
+    const keyCanvasContext = puzzleKeyCanvas.getContext("2d", { willReadFrequently: true });
+
+    /* =========================================================
+       状態
+       ========================================================= */
 
     let currentReply = null;
     let typingTimer = null;
 
-    // 画像重ね合わせ謎：現在位置
-    let keyPos = { x: puzzleKeyStart.x, y: puzzleKeyStart.y };
-    let isDragging = false;
+    let keyPosition = {
+      x: puzzleKeyStart.x,
+      y: puzzleKeyStart.y
+    };
+
+    let keyDisplayRatio = {
+      width: 0.25,
+      height: 0.58
+    };
+
+    let keyPrepared = false;
+    let dragging = false;
+    let activePointerId = null;
     let dragOffsetX = 0;
     let dragOffsetY = 0;
 
-    paperImage.src = puzzlePaperImage;
-    keyImage.src = puzzleKeyImage;
-    keyImage.style.width = puzzleKeyWidth + "%";
-    resetKeyPosition();
+    puzzlePaper.src = puzzlePaperFile;
 
-    mailInput.addEventListener("input", () => {
-      sendBtn.disabled = mailInput.value.trim() === "";
+    /* =========================================================
+       メール画面
+       ========================================================= */
+
+    mailInput.addEventListener("input", function () {
+      sendButton.disabled = mailInput.value.trim() === "";
     });
 
-    sendBtn.addEventListener("click", sendMail);
-    notificationBtn.addEventListener("click", openReply);
-    closeReplyBtn.addEventListener("click", closeReply);
+    sendButton.addEventListener("click", sendMail);
+    notification.addEventListener("click", openReply);
+    closeReplyButton.addEventListener("click", closeReply);
 
-    closePuzzleBtn.addEventListener("click", closePuzzle);
-    resetKeyBtn.addEventListener("click", resetKeyPosition);
-
-    replyOverlay.addEventListener("click", (e) => {
-      if (e.target === replyOverlay) closeReply();
+    replyOverlay.addEventListener("click", function (event) {
+      if (event.target === replyOverlay) {
+        closeReply();
+      }
     });
 
-    puzzleOverlay.addEventListener("click", (e) => {
-      if (e.target === puzzleOverlay) closePuzzle();
-    });
-
-    function normalizeText(text) {
-      return (text || "")
+    function normalizeText(value) {
+      return String(value || "")
         .normalize("NFKC")
         .toLowerCase()
-        .replace(/\s+/g, "");
+        .replace(/[\s　.．・_-]+/g, "");
     }
 
     function includesAny(text, words) {
-      return words.some(word => text.includes(word));
+      return words.some(function (word) {
+        return text.includes(normalizeText(word));
+      });
     }
 
     function sendMail() {
-      const raw = mailInput.value.trim();
-      if (!raw) return;
+      const inputValue = mailInput.value.trim();
 
-      currentReply = createReplyData(raw);
-      notificationBtn.classList.remove("show");
+      if (!inputValue) {
+        return;
+      }
+
+      currentReply = createReply(inputValue);
+
+      notification.classList.remove("show");
       mailCard.classList.add("sending");
-      statusEl.textContent = "送信中…";
-      sendBtn.disabled = true;
+      sendStatus.textContent = "送信中…";
+      sendButton.disabled = true;
 
-      setTimeout(() => {
+      window.setTimeout(function () {
         mailCard.classList.remove("sending");
-        statusEl.textContent = "送信済み";
-        notificationBtn.classList.add("show");
-        mailInput.value = "";
-        sendBtn.disabled = true;
+        sendStatus.textContent = "送信済み";
+        notification.classList.add("show");
 
-        setTimeout(() => {
+        mailInput.value = "";
+        sendButton.disabled = true;
+
+        window.setTimeout(function () {
           if (!replyOverlay.classList.contains("show")) {
-            statusEl.textContent = "";
+            sendStatus.textContent = "";
           }
         }, 1200);
       }, 950);
     }
 
     function openReply() {
-      if (!currentReply) return;
-      notificationBtn.classList.remove("show");
+      if (!currentReply) {
+        return;
+      }
+
+      notification.classList.remove("show");
       replyOverlay.classList.add("show");
       replyOverlay.setAttribute("aria-hidden", "false");
       renderReply(currentReply);
     }
 
     function closeReply() {
-      clearTyping();
+      stopTyping();
       closePuzzle();
+
       replyOverlay.classList.remove("show");
       replyOverlay.setAttribute("aria-hidden", "true");
       replyText.textContent = "";
       replyExtras.innerHTML = "";
-      statusEl.textContent = "";
+      sendStatus.textContent = "";
+
+      window.setTimeout(function () {
+        mailInput.focus();
+      }, 0);
     }
 
-    function clearTyping() {
-      if (typingTimer) {
-        clearTimeout(typingTimer);
+    function stopTyping() {
+      if (typingTimer !== null) {
+        window.clearTimeout(typingTimer);
         typingTimer = null;
       }
     }
 
-    function typeText(text, element, callback) {
-      clearTyping();
-      element.textContent = "";
+    function typeText(text, target, finished) {
+      stopTyping();
+      target.textContent = "";
+
       let index = 0;
 
-      function step() {
-        element.textContent = text.slice(0, index);
-        index++;
+      function typeNextCharacter() {
+        target.textContent = text.slice(0, index);
+        index += 1;
+
         if (index <= text.length) {
-          typingTimer = setTimeout(step, 24);
+          typingTimer = window.setTimeout(typeNextCharacter, typingSpeed);
         } else {
           typingTimer = null;
-          if (typeof callback === "function") callback();
+          if (typeof finished === "function") {
+            finished();
+          }
         }
       }
-      step();
+
+      typeNextCharacter();
     }
 
     function renderReply(replyData) {
       replyText.textContent = "";
       replyExtras.innerHTML = "";
 
-      const replyString = replyData.lines.join("\n");
-      typeText(replyString, replyText, () => {
+      typeText(replyData.lines.join("\n"), replyText, function () {
         renderReplyExtras(replyData);
       });
     }
@@ -726,72 +877,84 @@
       replyExtras.innerHTML = "";
 
       if (replyData.attachment) {
-        const card = document.createElement("div");
-        card.className = "attachmentCard";
+        const attachmentCard = document.createElement("div");
+        attachmentCard.className = "attachment-card";
 
-        const name = document.createElement("div");
-        name.className = "attachmentName";
-        name.textContent = replyData.attachment.label || "添付画像";
+        const attachmentName = document.createElement("div");
+        attachmentName.className = "attachment-name";
+        attachmentName.textContent = replyData.attachment.label;
 
-        const img = document.createElement("img");
-        img.className = "attachmentImg";
-        img.src = replyData.attachment.src;
-        img.alt = replyData.attachment.alt || "添付画像";
+        const attachmentImage = document.createElement("img");
+        attachmentImage.className = "attachment-image";
+        attachmentImage.src = replyData.attachment.src;
+        attachmentImage.alt = replyData.attachment.alt;
 
-        card.appendChild(name);
-        card.appendChild(img);
-        replyExtras.appendChild(card);
+        attachmentCard.appendChild(attachmentName);
+        attachmentCard.appendChild(attachmentImage);
+        replyExtras.appendChild(attachmentCard);
       }
 
       if (replyData.note) {
         const note = document.createElement("div");
-        note.className = "storyNote";
+        note.className = "story-note";
         note.textContent = replyData.note;
         replyExtras.appendChild(note);
       }
 
-      if (replyData.controls && replyData.controls.length) {
-        replyData.controls.forEach(control => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = control.className || "hintBtn";
-          btn.textContent = control.label;
-          btn.addEventListener("click", control.onClick);
-          replyExtras.appendChild(btn);
+      if (Array.isArray(replyData.controls)) {
+        replyData.controls.forEach(function (control) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = control.className || "hint-button";
+          button.textContent = control.label;
+          button.addEventListener("click", control.onClick);
+          replyExtras.appendChild(button);
         });
       }
 
       if (replyData.xPostText) {
-        const xBtn = document.createElement("button");
-        xBtn.type = "button";
-        xBtn.className = "xPostBtn";
-        xBtn.textContent = "Xで報告する";
-        xBtn.addEventListener("click", () => postToX(replyData.xPostText));
-        replyExtras.appendChild(xBtn);
+        const xButton = document.createElement("button");
+        xButton.type = "button";
+        xButton.className = "x-button";
+        xButton.textContent = "Xで報告する";
+        xButton.addEventListener("click", function () {
+          postToX(replyData.xPostText);
+        });
+        replyExtras.appendChild(xButton);
       }
     }
 
     function postToX(text) {
-      const url = "https://x.com/intent/tweet?text=" + encodeURIComponent(text);
-      window.open(url, "_blank");
+      const postUrl = "https://x.com/intent/tweet?text=" + encodeURIComponent(text);
+      window.open(postUrl, "_blank", "noopener,noreferrer");
     }
 
-    function createReplyData(inputText) {
-      const raw = inputText.trim();
-      const text = normalizeText(raw);
+    /* =========================================================
+       反応ワードと返信内容
+       ========================================================= */
 
-      const hasCode = text.includes(normalizeText(correctCode));
+    function createReply(inputValue) {
+      const text = normalizeText(inputValue);
+
+      const hasCorrectCode = text.includes(normalizeText(correctCode));
       const hasPot = includesAny(text, ["鉢植え", "はちうえ"]);
-      const hasKey = text.includes("鍵");
-      const hasMilk = text.includes("ミルク".toLowerCase());
-      const hasHint = includesAny(text, ["わからない", "ヒント".toLowerCase()]);
-      const hasNFStory = text.includes(normalizeText("N.Fについて"));
-      const hasPuzzleContext =
-        hasKey &&
-        includesAny(text, ["謎", "メール画面", "最初やつ", "最初のやつ"]) &&
-        text.includes("重");
+      const hasKey = text.includes(normalizeText("鍵"));
+      const hasMilk = text.includes(normalizeText("ミルク"));
+      const hasHint = includesAny(text, ["わからない", "ヒント"]);
+      const hasNfStory = includesAny(text, ["N.Fについて", "NFについて"]);
 
-      if (hasCode) {
+      const hasOverlayWord = text.includes(normalizeText("重"));
+      const hasPuzzleWord = includesAny(text, [
+        "謎",
+        "メール画面",
+        "最初やつ",
+        "最初のやつ"
+      ]);
+
+      const hasOverlayCombination = hasKey && hasPuzzleWord && hasOverlayWord;
+
+      // 正解数字を最優先
+      if (hasCorrectCode) {
         return {
           lines: [
             "【古本持ち去り事件の報告を受領した】",
@@ -800,11 +963,12 @@
             "ありがとう。次も頼むよ。",
             "しかし…君と謎を解いていると事件によく遭遇するな…"
           ],
-          xPostText: POST_TEXT_FILE005
+          xPostText: file005PostText
         };
       }
 
-      if (hasPuzzleContext) {
+      // 「鍵」＋「謎／メール画面／最初のやつ」＋「重」
+      if (hasOverlayCombination) {
         return {
           lines: [
             "重ねるのか…！……しかしどのように重ねればよいだろうか？"
@@ -812,7 +976,7 @@
           controls: [
             {
               label: "添付資料を確認する",
-              className: "attachOpenBtn",
+              className: "attachment-button",
               onClick: openPuzzle
             }
           ]
@@ -827,26 +991,26 @@
             "オートロックのようでこの鍵では扉はあかないようだ…ほかに使い道があるのだろうか…？"
           ],
           attachment: {
-            src: "file006_鍵.png",
-            alt: "添付された鍵の画像",
-            label: "添付画像：file006_鍵.png"
+            src: puzzleKeyFile,
+            alt: "見つかった鍵",
+            label: "添付画像：" + puzzleKeyFile
           }
         };
       }
 
-      if (hasNFStory) {
+      if (hasNfStory) {
         return {
           lines: [
             "しかし頭の回転が遅く、私にはこの手の謎は難しい…",
             "小説の中の登場人物にあこがれて探偵になったんだがな"
           ],
           note: "※N.Fについてで聞けるストーリーはネタバレOK◎",
-          xPostText: POST_TEXT_NF
+          xPostText: nfPostText
         };
       }
 
       if (hasHint) {
-        return getHintReplyStep0();
+        return createHintStep0();
       }
 
       if (hasMilk) {
@@ -873,52 +1037,62 @@
       };
     }
 
-    function getHintReplyStep0() {
+    /* =========================================================
+       段階式ヒント
+       ========================================================= */
+
+    function createHintStep0() {
       return {
         lines: [
           "一緒に思考を整理しよう。まずは君の推理を聞かせてくれ。"
         ],
         controls: [
           {
-            label: "①画像に",
-            className: "hintBtn",
-            onClick: () => renderReply(getHintReplyStep1())
+            label: "① 画像に",
+            className: "hint-button",
+            onClick: function () {
+              renderReply(createHintStep1());
+            }
           }
         ]
       };
     }
 
-    function getHintReplyStep1() {
+    function createHintStep1() {
       return {
         lines: [
           "8の上に何かあるようだな…？"
         ],
         controls: [
           {
-            label: "②次に進んだがどうしたらいいかわからない",
-            className: "hintBtn",
-            onClick: () => renderReply(getHintReplyStep2())
+            label: "② 次に進んだがどうしたらいいかわからない",
+            className: "hint-button",
+            onClick: function () {
+              renderReply(createHintStep2());
+            }
           }
         ]
       };
     }
 
-    function getHintReplyStep2() {
+    function createHintStep2() {
       return {
         lines: [
           "鍵の頭のこの形…どこかで見たような…？"
         ],
         controls: [
           {
-            label: "③鍵の使い方はわかった",
-            className: "hintBtn",
-            onClick: () => renderReply(getHintReplyStep3())
+            label: "③ 鍵の使い方はわかった",
+            className: "hint-button",
+            onClick: function () {
+              renderReply(createHintStep3());
+            }
           }
         ]
       };
     }
 
-    function getHintReplyStep3() {
+    function createHintStep3() {
       return {
         lines: [
           "重ねてみて、見える数字を上から教えてくれ"
@@ -926,134 +1100,381 @@
       };
     }
 
-    /* =========================
-       画像重ね合わせ謎
-       ========================= */
+    /* =========================================================
+       画像重ね合わせ謎：画像の準備
+       ========================================================= */
+
+    function showPuzzleError(message) {
+      puzzleError.textContent = message;
+      puzzleError.classList.add("show");
+    }
+
+    function clearPuzzleError() {
+      puzzleError.textContent = "";
+      puzzleError.classList.remove("show");
+    }
+
+    function prepareKeyImage() {
+      return new Promise(function (resolve, reject) {
+        const sourceImage = new Image();
+
+        sourceImage.onload = function () {
+          try {
+            const sourceCanvas = document.createElement("canvas");
+            const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+
+            sourceCanvas.width = sourceImage.naturalWidth;
+            sourceCanvas.height = sourceImage.naturalHeight;
+            sourceContext.drawImage(sourceImage, 0, 0);
+
+            const imageData = sourceContext.getImageData(
+              0,
+              0,
+              sourceCanvas.width,
+              sourceCanvas.height
+            );
+
+            const bounds = findVisibleBounds(
+              imageData.data,
+              sourceCanvas.width,
+              sourceCanvas.height
+            );
+
+            const cropWidth = Math.max(1, bounds.right - bounds.left + 1);
+            const cropHeight = Math.max(1, bounds.bottom - bounds.top + 1);
+
+            const croppedCanvas = document.createElement("canvas");
+            const croppedContext = croppedCanvas.getContext("2d");
+            croppedCanvas.width = cropWidth;
+            croppedCanvas.height = cropHeight;
+
+            croppedContext.drawImage(
+              sourceCanvas,
+              bounds.left,
+              bounds.top,
+              cropWidth,
+              cropHeight,
+              0,
+              0,
+              cropWidth,
+              cropHeight
+            );
+
+            drawRotatedKey(croppedCanvas, puzzleKeyRotation);
+
+            // 元画像と謎画像の比率を基準に鍵の表示サイズを決定
+            const rotationIsSideways = Math.abs(puzzleKeyRotation % 180) === 90;
+            const rotatedPixelWidth = rotationIsSideways ? cropHeight : cropWidth;
+            const rotatedPixelHeight = rotationIsSideways ? cropWidth : cropHeight;
+
+            keyDisplayRatio.width =
+              (rotatedPixelWidth / sourceImage.naturalWidth) * puzzleKeyScale;
+
+            keyDisplayRatio.height =
+              (rotatedPixelHeight / sourceImage.naturalHeight) * puzzleKeyScale;
+
+            keyPrepared = true;
+            updateKeyDisplaySize();
+            resetKeyPosition();
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        sourceImage.onerror = function () {
+          reject(new Error(puzzleKeyFile + "を読み込めませんでした。"));
+        };
+
+        sourceImage.src = puzzleKeyFile;
+      });
+    }
+
+    function findVisibleBounds(pixelData, width, height) {
+      const cornerIndex = 0;
+      const cornerColor = {
+        red: pixelData[cornerIndex],
+        green: pixelData[cornerIndex + 1],
+        blue: pixelData[cornerIndex + 2],
+        alpha: pixelData[cornerIndex + 3]
+      };
+
+      let left = width;
+      let top = height;
+      let right = -1;
+      let bottom = -1;
+
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          const index = (y * width + x) * 4;
+          const red = pixelData[index];
+          const green = pixelData[index + 1];
+          const blue = pixelData[index + 2];
+          const alpha = pixelData[index + 3];
+
+          let visible = false;
+
+          if (cornerColor.alpha < 20) {
+            visible = alpha > 20;
+          } else {
+            const colorDifference =
+              Math.abs(red - cornerColor.red) +
+              Math.abs(green - cornerColor.green) +
+              Math.abs(blue - cornerColor.blue);
+
+            visible = alpha > 20 && colorDifference > 42;
+          }
+
+          if (visible) {
+            left = Math.min(left, x);
+            top = Math.min(top, y);
+            right = Math.max(right, x);
+            bottom = Math.max(bottom, y);
+          }
+        }
+      }
+
+      if (right < left || bottom < top) {
+        return {
+          left: 0,
+          top: 0,
+          right: width - 1,
+          bottom: height - 1
+        };
+      }
+
+      return { left, top, right, bottom };
+    }
+
+    function drawRotatedKey(sourceCanvas, degrees) {
+      const normalizedDegrees = ((degrees % 360) + 360) % 360;
+      const radians = normalizedDegrees * Math.PI / 180;
+      const sideways = normalizedDegrees === 90 || normalizedDegrees === 270;
+
+      puzzleKeyCanvas.width = sideways ? sourceCanvas.height : sourceCanvas.width;
+      puzzleKeyCanvas.height = sideways ? sourceCanvas.width : sourceCanvas.height;
+
+      keyCanvasContext.clearRect(
+        0,
+        0,
+        puzzleKeyCanvas.width,
+        puzzleKeyCanvas.height
+      );
+
+      keyCanvasContext.save();
+      keyCanvasContext.translate(
+        puzzleKeyCanvas.width / 2,
+        puzzleKeyCanvas.height / 2
+      );
+      keyCanvasContext.rotate(radians);
+      keyCanvasContext.drawImage(
+        sourceCanvas,
+        -sourceCanvas.width / 2,
+        -sourceCanvas.height / 2
+      );
+      keyCanvasContext.restore();
+    }
+
+    function updateKeyDisplaySize() {
+      if (!keyPrepared) {
+        return;
+      }
+
+      const stageRect = puzzleStage.getBoundingClientRect();
+      const width = stageRect.width * keyDisplayRatio.width;
+      const height = stageRect.height * keyDisplayRatio.height;
+
+      puzzleKeyCanvas.style.width = width + "px";
+      puzzleKeyCanvas.style.height = height + "px";
+    }
+
+    /* =========================================================
+       画像重ね合わせ謎：開閉とドラッグ
+       ========================================================= */
+
+    resetKeyButton.addEventListener("click", resetKeyPosition);
+    closePuzzleButton.addEventListener("click", closePuzzle);
+
+    puzzleOverlay.addEventListener("click", function (event) {
+      if (event.target === puzzleOverlay) {
+        closePuzzle();
+      }
+    });
+
+    puzzlePaper.addEventListener("error", function () {
+      showPuzzleError(
+        puzzlePaperFile + "を読み込めません。HTMLと同じフォルダに画像を置いてください。"
+      );
+    });
+
+    puzzleKeyCanvas.addEventListener("pointerdown", startKeyDrag);
+    puzzleKeyCanvas.addEventListener("pointermove", moveKeyDrag);
+    puzzleKeyCanvas.addEventListener("pointerup", endKeyDrag);
+    puzzleKeyCanvas.addEventListener("pointercancel", endKeyDrag);
+    puzzleKeyCanvas.addEventListener("lostpointercapture", endKeyDrag);
+
+    window.addEventListener("resize", function () {
+      if (puzzleOverlay.classList.contains("show")) {
+        updateKeyDisplaySize();
+        keyPosition = clampKeyPosition(keyPosition.x, keyPosition.y);
+        applyKeyPosition();
+      }
+    });
 
     function openPuzzle() {
+      clearPuzzleError();
       puzzleOverlay.classList.add("show");
       puzzleOverlay.setAttribute("aria-hidden", "false");
-      resetKeyPosition();
+
+      window.requestAnimationFrame(function () {
+        if (keyPrepared) {
+          updateKeyDisplaySize();
+          resetKeyPosition();
+          return;
+        }
+
+        prepareKeyImage().catch(function () {
+          showPuzzleError(
+            puzzleKeyFile + "を読み込めません。HTMLと同じフォルダに画像を置いてください。"
+          );
+        });
+      });
     }
 
     function closePuzzle() {
       puzzleOverlay.classList.remove("show");
       puzzleOverlay.setAttribute("aria-hidden", "true");
-      document.body.classList.remove("dragLock");
-      isDragging = false;
-      keyImage.classList.remove("dragging");
+      stopKeyDrag();
     }
 
     function resetKeyPosition() {
-      keyPos = { x: puzzleKeyStart.x, y: puzzleKeyStart.y };
+      keyPosition = {
+        x: puzzleKeyStart.x,
+        y: puzzleKeyStart.y
+      };
+
+      keyPosition = clampKeyPosition(keyPosition.x, keyPosition.y);
       applyKeyPosition();
     }
 
     function applyKeyPosition() {
-      keyImage.style.left = keyPos.x + "%";
-      keyImage.style.top = keyPos.y + "%";
-      keyImage.style.width = puzzleKeyWidth + "%";
+      const stageRect = puzzleStage.getBoundingClientRect();
+
+      puzzleKeyCanvas.style.left =
+        (keyPosition.x / 100) * stageRect.width + "px";
+
+      puzzleKeyCanvas.style.top =
+        (keyPosition.y / 100) * stageRect.height + "px";
     }
 
-    function clampKeyPosition(nextX, nextY) {
+    function clampKeyPosition(xPercent, yPercent) {
       const stageRect = puzzleStage.getBoundingClientRect();
-      const keyRect = keyImage.getBoundingClientRect();
+      const keyRect = puzzleKeyCanvas.getBoundingClientRect();
 
-      const maxXPercent = 100 - (keyRect.width / stageRect.width) * 100;
-      const maxYPercent = 100 - (keyRect.height / stageRect.height) * 100;
+      if (stageRect.width === 0 || stageRect.height === 0) {
+        return { x: xPercent, y: yPercent };
+      }
+
+      const keyWidthPercent = (keyRect.width / stageRect.width) * 100;
+      const keyHeightPercent = (keyRect.height / stageRect.height) * 100;
 
       return {
-        x: Math.max(0, Math.min(nextX, maxXPercent)),
-        y: Math.max(0, Math.min(nextY, maxYPercent))
+        x: Math.max(0, Math.min(xPercent, 100 - keyWidthPercent)),
+        y: Math.max(0, Math.min(yPercent, 100 - keyHeightPercent))
       };
     }
 
-    function maybeSnapKey() {
-      const dx = keyPos.x - puzzleKeyTarget.x;
-      const dy = keyPos.y - puzzleKeyTarget.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance <= puzzleSnapDistance) {
-        keyPos = { x: puzzleKeyTarget.x, y: puzzleKeyTarget.y };
-        applyKeyPosition();
+    function startKeyDrag(event) {
+      if (!keyPrepared) {
+        return;
       }
-    }
 
-    function isWithinCorrectRange() {
-      const dx = keyPos.x - puzzleKeyTarget.x;
-      const dy = keyPos.y - puzzleKeyTarget.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      return distance <= puzzleCorrectRange;
-    }
-
-    function getPointFromEvent(event) {
-      if (event.touches && event.touches[0]) {
-        return { x: event.touches[0].clientX, y: event.touches[0].clientY };
-      }
-      if (event.changedTouches && event.changedTouches[0]) {
-        return { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
-      }
-      return { x: event.clientX, y: event.clientY };
-    }
-
-    function startDrag(event) {
-      event.preventDefault();
-      const point = getPointFromEvent(event);
-      const keyRect = keyImage.getBoundingClientRect();
-
-      isDragging = true;
-      keyImage.classList.add("dragging");
-      document.body.classList.add("dragLock");
-
-      dragOffsetX = point.x - keyRect.left;
-      dragOffsetY = point.y - keyRect.top;
-    }
-
-    function moveDrag(event) {
-      if (!isDragging) return;
       event.preventDefault();
 
-      const point = getPointFromEvent(event);
+      dragging = true;
+      activePointerId = event.pointerId;
+
+      const keyRect = puzzleKeyCanvas.getBoundingClientRect();
+      dragOffsetX = event.clientX - keyRect.left;
+      dragOffsetY = event.clientY - keyRect.top;
+
+      puzzleKeyCanvas.classList.add("dragging");
+      document.body.classList.add("drag-lock");
+      puzzleKeyCanvas.setPointerCapture(event.pointerId);
+    }
+
+    function moveKeyDrag(event) {
+      if (!dragging || event.pointerId !== activePointerId) {
+        return;
+      }
+
+      event.preventDefault();
+
       const stageRect = puzzleStage.getBoundingClientRect();
 
-      const nextXPx = point.x - stageRect.left - dragOffsetX;
-      const nextYPx = point.y - stageRect.top - dragOffsetY;
+      const newLeftPixels = event.clientX - stageRect.left - dragOffsetX;
+      const newTopPixels = event.clientY - stageRect.top - dragOffsetY;
 
-      const nextXPercent = (nextXPx / stageRect.width) * 100;
-      const nextYPercent = (nextYPx / stageRect.height) * 100;
+      const newXPercent = (newLeftPixels / stageRect.width) * 100;
+      const newYPercent = (newTopPixels / stageRect.height) * 100;
 
-      keyPos = clampKeyPosition(nextXPercent, nextYPercent);
+      keyPosition = clampKeyPosition(newXPercent, newYPercent);
       applyKeyPosition();
     }
 
-    function endDrag(event) {
-      if (!isDragging) return;
-      if (event) event.preventDefault();
+    function endKeyDrag(event) {
+      if (!dragging) {
+        return;
+      }
 
-      isDragging = false;
-      keyImage.classList.remove("dragging");
-      document.body.classList.remove("dragLock");
+      if (event && activePointerId !== null && event.pointerId !== activePointerId) {
+        return;
+      }
 
-      maybeSnapKey();
+      stopKeyDrag();
+      snapKeyIfNearTarget();
 
-      // 正解位置の近くに置けたかは内部判定だけしておき、画面上には数字を表示しない
-      isWithinCorrectRange();
+      // 正解位置に置かれたかを内部で確認します。
+      // 数字や正解表示は画面には出しません。
+      isKeyAtCorrectPosition();
     }
 
-    keyImage.addEventListener("mousedown", startDrag);
-    keyImage.addEventListener("touchstart", startDrag, { passive: false });
+    function stopKeyDrag() {
+      dragging = false;
+      activePointerId = null;
+      puzzleKeyCanvas.classList.remove("dragging");
+      document.body.classList.remove("drag-lock");
+    }
 
-    window.addEventListener("mousemove", moveDrag, { passive: false });
-    window.addEventListener("touchmove", moveDrag, { passive: false });
+    function getDistanceFromTarget() {
+      const differenceX = keyPosition.x - puzzleKeyTarget.x;
+      const differenceY = keyPosition.y - puzzleKeyTarget.y;
 
-    window.addEventListener("mouseup", endDrag);
-    window.addEventListener("touchend", endDrag, { passive: false });
+      return Math.sqrt(
+        differenceX * differenceX + differenceY * differenceY
+      );
+    }
 
-    window.addEventListener("touchcancel", endDrag, { passive: false });
+    function snapKeyIfNearTarget() {
+      if (getDistanceFromTarget() > puzzleSnapDistance) {
+        return;
+      }
 
-    window.addEventListener("resize", () => {
+      keyPosition = clampKeyPosition(
+        puzzleKeyTarget.x,
+        puzzleKeyTarget.y
+      );
+
       applyKeyPosition();
-    });
+
+      puzzleKeyCanvas.classList.remove("snapped");
+      void puzzleKeyCanvas.offsetWidth;
+      puzzleKeyCanvas.classList.add("snapped");
+    }
+
+    function isKeyAtCorrectPosition() {
+      return getDistanceFromTarget() <= puzzleCorrectRange;
+    }
   </script>
 </body>
 </html>
