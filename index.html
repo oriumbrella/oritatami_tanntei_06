@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>青井直次郎、セキュリティロック解除　報告メール</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #e9eef3;
+      font-family: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      color: #222;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 760px;
+    }
+
+    .mail {
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+      transition: transform 0.5s ease, opacity 0.5s ease;
+    }
+
+    .mail.sending {
+      transform: translateY(-16px);
+      opacity: 0.52;
+    }
+
+    .header {
+      background: #2f3542;
+      color: #fff;
+      padding: 16px 18px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      padding: 12px 18px;
+      border-bottom: 1px solid #e3e7ec;
+      align-items: center;
+      background: #fff;
+    }
+
+    .label {
+      width: 84px;
+      color: #68707a;
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+
+    .value {
+      flex: 1;
+      font-size: 15px;
+      word-break: break-word;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      border: none;
+      outline: none;
+      resize: vertical;
+      font-size: 15px;
+      line-height: 1.7;
+      font-family: inherit;
+      background: transparent;
+      color: #222;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      background: #fff;
+    }
+
+    .status {
+      min-height: 20px;
+      color: #68707a;
+      font-size: 14px;
+    }
+
+    button {
+      font-family: inherit;
+    }
+
+    .sendBtn,
+    .notifyBtn,
+    .closeBtn,
+    .hintBtn,
+    .xPostBtn,
+    .attachOpenBtn,
+    .resetKeyBtn,
+    .closePuzzleBtn {
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+
+    .sendBtn:hover,
+    .notifyBtn:hover,
+    .closeBtn:hover,
+    .hintBtn:hover,
+    .xPostBtn:hover,
+    .attachOpenBtn:hover,
+    .resetKeyBtn:hover,
+    .closePuzzleBtn:hover {
+      transform: translateY(-1px);
+    }
+
+    .sendBtn {
+      background: #1d72f3;
+      color: #fff;
+      padding: 11px 18px;
+      font-size: 14px;
+      min-width: 110px;
+    }
+
+    .sendBtn:disabled {
+      background: #b8c7df;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .notifyWrap {
+      margin-top: 16px;
+      text-align: center;
+    }
+
+    .notifyBtn {
+      display: none;
+      background: #fff;
+      color: #1f2937;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+      padding: 14px 20px;
+      font-size: 15px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .notifyBtn.show {
+      display: inline-block;
+    }
+
+    .fiction {
+      text-align: center;
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 14px;
+      line-height: 1.6;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 28, 38, 0.54);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      z-index: 1000;
+    }
+
+    .overlay.show {
+      display: flex;
+    }
+
+    .replyModal {
+      width: 100%;
+      max-width: 720px;
+      max-height: 90vh;
+      overflow: hidden;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modalHeader {
+      background: #2f3542;
+      color: #fff;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-weight: bold;
+    }
+
+    .closeBtn {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      width: 34px;
+      height: 34px;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .replyMeta {
+      border-bottom: 1px solid #e3e7ec;
+      background: #fff;
+    }
+
+    .replyBody {
+      padding: 18px;
+      overflow-y: auto;
+      background: #fff;
+    }
+
+    .replyText {
+      white-space: pre-wrap;
+      line-height: 1.9;
+      font-size: 15px;
+      min-height: 120px;
+      margin: 0;
+      word-break: break-word;
+    }
+
+    .replyExtras {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .attachmentCard {
+      width: 100%;
+      border: 1px solid #d6dde7;
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 12px;
+    }
+
+    .attachmentName {
+      font-size: 13px;
+      color: #5b6470;
+      margin-bottom: 10px;
+    }
+
+    .attachmentImg {
+      width: 100%;
+      max-width: 340px;
+      display: block;
+      margin: 0 auto;
+      border-radius: 10px;
+      border: 1px solid #d6dde7;
+      background: #fff;
+    }
+
+    .hintBtn,
+    .xPostBtn,
+    .attachOpenBtn,
+    .resetKeyBtn,
+    .closePuzzleBtn {
+      width: 100%;
+      max-width: 420px;
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+
+    .hintBtn {
+      background: #eef4ff;
+      color: #1f3f78;
+    }
+
+    .attachOpenBtn {
+      background: #edf7ef;
+      color: #1f5c31;
+    }
+
+    .xPostBtn {
+      background: #111827;
+      color: #fff;
+    }
+
+    .storyNote {
+      width: 100%;
+      background: #fff8dd;
+      border: 1px solid #f2e19b;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #6b5600;
+      line-height: 1.7;
+    }
+
+    /* 画像重ね合わせ謎 */
+    .puzzleOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 15, 28, 0.72);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      z-index: 1100;
+    }
+
+    .puzzleOverlay.show {
+      display: flex;
+    }
+
+    .puzzleModal {
+      width: 100%;
+      max-width: 860px;
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+    }
+
+    .puzzleHead {
+      background: #2f3542;
+      color: #fff;
+      padding: 14px 18px;
+      font-weight: bold;
+    }
+
+    .puzzleInner {
+      padding: 16px;
+    }
+
+    .puzzleDesc {
+      margin: 0 0 14px;
+      color: #485260;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .puzzleStageWrap {
+      width: 100%;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid #d8dee8;
+      background: #f4f6f8;
+    }
+
+    .puzzleStage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      background: #f5f5f5;
+    }
+
+    .paperImage {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .keyImage {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: auto;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-user-drag: none;
+      z-index: 2;
+    }
+
+    .keyImage.dragging {
+      cursor: grabbing;
+    }
+
+    .puzzleActions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .resetKeyBtn {
+      background: #eef4ff;
+      color: #1f3f78;
+    }
+
+    .closePuzzleBtn {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    body.dragLock {
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        align-items: flex-start;
+      }
+
+      .header,
+      .modalHeader,
+      .puzzleHead {
+        font-size: 16px;
+      }
+
+      .row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .label {
+        width: auto;
+      }
+
+      textarea {
+        min-height: 160px;
+      }
+
+      .footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .sendBtn {
+        width: 100%;
+      }
+
+      .replyBody {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="mailCard" class="mail">
+      <div class="header">青井直次郎、セキュリティロック解除　報告メール</div>
+
+      <div class="row">
+        <div class="label">To</div>
+        <div class="value">N.F@koreha.fiction.da</div>
+      </div>
+
+      <div class="row">
+        <div class="label">Subject</div>
+        <div class="value">青井直次郎、セキュリティロック解除の報告</div>
+      </div>
+
+      <div class="row">
+        <div class="label">本文</div>
+        <div class="value">
+          <textarea id="mailInput" placeholder="ここに報告内容を入力してください。"></textarea>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div id="status" class="status"></div>
+        <button id="sendBtn" class="sendBtn" disabled>送信する</button>
+      </div>
+    </div>
+
+    <div class="notifyWrap">
+      <button id="notification" type="button" class="notifyBtn">📩 新着メール 1件</button>
+    </div>
+
+    <div class="fiction">
+      本作品はフィクションです。実際の地名・団体・人物とは一切関係ございません。
+    </div>
+  </div>
+
+  <!-- 返信メールポップアップ -->
+  <div id="replyOverlay" class="overlay" aria-hidden="true">
+    <div class="replyModal">
+      <div class="modalHeader">
+        <span>返信メール</span>
+        <button id="closeReplyBtn" class="closeBtn" type="button" aria-label="閉じる">×</button>
+      </div>
+
+      <div class="replyMeta">
+        <div class="row">
+          <div class="label">From</div>
+          <div class="value">N.F@koreha.fiction.da</div>
+        </div>
+        <div class="row">
+          <div class="label">Subject</div>
+          <div class="value">RE: 青井直次郎、セキュリティロック解除の報告</div>
+        </div>
+      </div>
+
+      <div class="replyBody">
+        <p id="replyText" class="replyText"></p>
+        <div id="replyExtras" class="replyExtras"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 画像重ね合わせ謎 -->
+  <div id="puzzleOverlay" class="puzzleOverlay" aria-hidden="true">
+    <div class="puzzleModal">
+      <div class="puzzleHead">添付資料</div>
+      <div class="puzzleInner">
+        <p class="puzzleDesc">
+          紙の上に鍵を重ねて確認してください。<br>
+          数字は自動では表示されません。見えた4桁を自分で読み取り、メール本文から報告してください。
+        </p>
+
+        <div class="puzzleStageWrap">
+          <div id="puzzleStage" class="puzzleStage">
+            <img id="paperImage" class="paperImage" src="" alt="紙の画像" />
+            <img id="keyImage" class="keyImage" src="" alt="鍵の画像" />
+          </div>
+        </div>
+
+        <div class="puzzleActions">
+          <button id="resetKeyBtn" type="button" class="resetKeyBtn">鍵を最初の位置に戻す</button>
+          <button id="closePuzzleBtn" type="button" class="closePuzzleBtn">資料を閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================
+       変更しやすい設定
+       ========================= */
+
+    // 4桁の正解数字
+    const correctCode = "4631";
+
+    // 画像重ね合わせ謎：画像ファイル名
+    const puzzlePaperImage = "paper.png";
+    const puzzleKeyImage = "key.png";
+
+    // 画像重ね合わせ謎：鍵の表示サイズ（ステージ幅に対する％）
+    const puzzleKeyWidth = 32;
+
+    // 画像重ね合わせ謎：鍵の初期位置（左上基準・％）
+    const puzzleKeyStart = { x: 6, y: 62 };
+
+    // 画像重ね合わせ謎：鍵の正解位置（左上基準・％）
+    const puzzleKeyTarget = { x: 45, y: 14 };
+
+    // 画像重ね合わせ謎：正解とみなす範囲（％）
+    const puzzleCorrectRange = 4.5;
+
+    // 画像重ね合わせ謎：吸着する距離（％）
+    const puzzleSnapDistance = 6.5;
+
+    /* =========================
+       基本設定
+       ========================= */
+
+    const POST_TEXT_FILE005 =
+      "【File005：おりたたみ探偵事務所　セキュリティロック解除】\n" +
+      "あなたはパスワードを特定し、\n" +
+      "N.Fに報告した\n" +
+      "#おりたたみ探偵事務所 #謎解き";
+
+    const POST_TEXT_NF =
+      "【おりたたみ探偵file004】N.Fについて少し知ることができた！\n" +
+      "※N.Fについてで聞けるストーリーはネタバレOK◎";
+
+    const mailCard = document.getElementById("mailCard");
+    const mailInput = document.getElementById("mailInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const statusEl = document.getElementById("status");
+    const notificationBtn = document.getElementById("notification");
+
+    const replyOverlay = document.getElementById("replyOverlay");
+    const closeReplyBtn = document.getElementById("closeReplyBtn");
+    const replyText = document.getElementById("replyText");
+    const replyExtras = document.getElementById("replyExtras");
+
+    const puzzleOverlay = document.getElementById("puzzleOverlay");
+    const puzzleStage = document.getElementById("puzzleStage");
+    const paperImage = document.getElementById("paperImage");
+    const keyImage = document.getElementById("keyImage");
+    const resetKeyBtn = document.getElementById("resetKeyBtn");
+    const closePuzzleBtn = document.getElementById("closePuzzleBtn");
+
+    let currentReply = null;
+    let typingTimer = null;
+
+    // 画像重ね合わせ謎：現在位置
+    let keyPos = { x: puzzleKeyStart.x, y: puzzleKeyStart.y };
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    paperImage.src = puzzlePaperImage;
+    keyImage.src = puzzleKeyImage;
+    keyImage.style.width = puzzleKeyWidth + "%";
+    resetKeyPosition();
+
+    mailInput.addEventListener("input", () => {
+      sendBtn.disabled = mailInput.value.trim() === "";
+    });
+
+    sendBtn.addEventListener("click", sendMail);
+    notificationBtn.addEventListener("click", openReply);
+    closeReplyBtn.addEventListener("click", closeReply);
+
+    closePuzzleBtn.addEventListener("click", closePuzzle);
+    resetKeyBtn.addEventListener("click", resetKeyPosition);
+
+    replyOverlay.addEventListener("click", (e) => {
+      if (e.target === replyOverlay) closeReply();
+    });
+
+    puzzleOverlay.addEventListener("click", (e) => {
+      if (e.target === puzzleOverlay) closePuzzle();
+    });
+
+    function normalizeText(text) {
+      return (text || "")
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/\s+/g, "");
+    }
+
+    function includesAny(text, words) {
+      return words.some(word => text.includes(word));
+    }
+
+    function sendMail() {
+      const raw = mailInput.value.trim();
+      if (!raw) return;
+
+      currentReply = createReplyData(raw);
+      notificationBtn.classList.remove("show");
+      mailCard.classList.add("sending");
+      statusEl.textContent = "送信中…";
+      sendBtn.disabled = true;
+
+      setTimeout(() => {
+        mailCard.classList.remove("sending");
+        statusEl.textContent = "送信済み";
+        notificationBtn.classList.add("show");
+        mailInput.value = "";
+        sendBtn.disabled = true;
+
+        setTimeout(() => {
+          if (!replyOverlay.classList.contains("show")) {
+            statusEl.textContent = "";
+          }
+        }, 1200);
+      }, 950);
+    }
+
+    function openReply() {
+      if (!currentReply) return;
+      notificationBtn.classList.remove("show");
+      replyOverlay.classList.add("show");
+      replyOverlay.setAttribute("aria-hidden", "false");
+      renderReply(currentReply);
+    }
+
+    function closeReply() {
+      clearTyping();
+      closePuzzle();
+      replyOverlay.classList.remove("show");
+      replyOverlay.setAttribute("aria-hidden", "true");
+      replyText.textContent = "";
+      replyExtras.innerHTML = "";
+      statusEl.textContent = "";
+    }
+
+    function clearTyping() {
+      if (typingTimer) {
+        clearTimeout(typingTimer);
+        typingTimer = null;
+      }
+    }
+
+    function typeText(text, element, callback) {
+      clearTyping();
+      element.textContent = "";
+      let index = 0;
+
+      function step() {
+        element.textContent = text.slice(0, index);
+        index++;
+        if (index <= text.length) {
+          typingTimer = setTimeout(step, 24);
+        } else {
+          typingTimer = null;
+          if (typeof callback === "function") callback();
+        }
+      }
+      step();
+    }
+
+    function renderReply(replyData) {
+      replyText.textContent = "";
+      replyExtras.innerHTML = "";
+
+      const replyString = replyData.lines.join("\n");
+      typeText(replyString, replyText, () => {
+        renderReplyExtras(replyData);
+      });
+    }
+
+    function renderReplyExtras(replyData) {
+      replyExtras.innerHTML = "";
+
+      if (replyData.attachment) {
+        const card = document.createElement("div");
+        card.className = "attachmentCard";
+
+        const name = document.createElement("div");
+        name.className = "attachmentName";
+        name.textContent = replyData.attachment.label || "添付画像";
+
+        const img = document.createElement("img");
+        img.className = "attachmentImg";
+        img.src = replyData.attachment.src;
+        img.alt = replyData.attachment.alt || "添付画像";
+
+        card.appendChild(name);
+        card.appendChild(img);
+        replyExtras.appendChild(card);
+      }
+
+      if (replyData.note) {
+        const note = document.createElement("div");
+        note.className = "storyNote";
+        note.textContent = replyData.note;
+        replyExtras.appendChild(note);
+      }
+
+      if (replyData.controls && replyData.controls.length) {
+        replyData.controls.forEach(control => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = control.className || "hintBtn";
+          btn.textContent = control.label;
+          btn.addEventListener("click", control.onClick);
+          replyExtras.appendChild(btn);
+        });
+      }
+
+      if (replyData.xPostText) {
+        const xBtn = document.createElement("button");
+        xBtn.type = "button";
+        xBtn.className = "xPostBtn";
+        xBtn.textContent = "Xで報告する";
+        xBtn.addEventListener("click", () => postToX(replyData.xPostText));
+        replyExtras.appendChild(xBtn);
+      }
+    }
+
+    function postToX(text) {
+      const url = "https://x.com/intent/tweet?text=" + encodeURIComponent(text);
+      window.open(url, "_blank");
+    }
+
+    function createReplyData(inputText) {
+      const raw = inputText.trim();
+      const text = normalizeText(raw);
+
+      const hasCode = text.includes(normalizeText(correctCode));
+      const hasPot = includesAny(text, ["鉢植え", "はちうえ"]);
+      const hasKey = text.includes("鍵");
+      const hasMilk = text.includes("ミルク".toLowerCase());
+      const hasHint = includesAny(text, ["わからない", "ヒント".toLowerCase()]);
+      const hasNFStory = text.includes(normalizeText("N.Fについて"));
+      const hasPuzzleContext =
+        hasKey &&
+        includesAny(text, ["謎", "メール画面", "最初やつ", "最初のやつ"]) &&
+        text.includes("重");
+
+      if (hasCode) {
+        return {
+          lines: [
+            "【古本持ち去り事件の報告を受領した】",
+            "そうか…最初の謎と鍵はセットだったのか…！",
+            "君の謎解き力にいつも助けられている。",
+            "ありがとう。次も頼むよ。",
+            "しかし…君と謎を解いていると事件によく遭遇するな…"
+          ],
+          xPostText: POST_TEXT_FILE005
+        };
+      }
+
+      if (hasPuzzleContext) {
+        return {
+          lines: [
+            "重ねるのか…！……しかしどのように重ねればよいだろうか？"
+          ],
+          controls: [
+            {
+              label: "添付資料を確認する",
+              className: "attachOpenBtn",
+              onClick: openPuzzle
+            }
+          ]
+        };
+      }
+
+      if (hasPot) {
+        return {
+          lines: [
+            "なるほど…どかしてみよう。",
+            "一つ鍵が出てきたようだ…",
+            "オートロックのようでこの鍵では扉はあかないようだ…ほかに使い道があるのだろうか…？"
+          ],
+          attachment: {
+            src: "file006_鍵.png",
+            alt: "添付された鍵の画像",
+            label: "添付画像：file006_鍵.png"
+          }
+        };
+      }
+
+      if (hasNFStory) {
+        return {
+          lines: [
+            "しかし頭の回転が遅く、私にはこの手の謎は難しい…",
+            "小説の中の登場人物にあこがれて探偵になったんだがな"
+          ],
+          note: "※N.Fについてで聞けるストーリーはネタバレOK◎",
+          xPostText: POST_TEXT_NF
+        };
+      }
+
+      if (hasHint) {
+        return getHintReplyStep0();
+      }
+
+      if (hasMilk) {
+        return {
+          lines: [
+            "ミルクちゃんはちゃんとご主人に返したよ。"
+          ]
+        };
+      }
+
+      if (hasKey) {
+        return {
+          lines: [
+            "鍵を使用できる場所やものは見当たらないな…"
+          ]
+        };
+      }
+
+      return {
+        lines: [
+          "条件に合う内容が確認できない。",
+          "もう一度整理して報告してくれ。"
+        ]
+      };
+    }
+
+    function getHintReplyStep0() {
+      return {
+        lines: [
+          "一緒に思考を整理しよう。まずは君の推理を聞かせてくれ。"
+        ],
+        controls: [
+          {
+            label: "①画像に",
+            className: "hintBtn",
+            onClick: () => renderReply(getHintReplyStep1())
+          }
+        ]
+      };
+    }
+
+    function getHintReplyStep1() {
+      return {
+        lines: [
+          "8の上に何かあるようだな…？"
+        ],
+        controls: [
+          {
+            label: "②次に進んだがどうしたらいいかわからない",
+            className: "hintBtn",
+            onClick: () => renderReply(getHintReplyStep2())
+          }
+        ]
+      };
+    }
+
+    function getHintReplyStep2() {
+      return {
+        lines: [
+          "鍵の頭のこの形…どこかで見たような…？"
+        ],
+        controls: [
+          {
+            label: "③鍵の使い方はわかった",
+            className: "hintBtn",
+            onClick: () => renderReply(getHintReplyStep3())
+          }
+        ]
+      };
+    }
+
+    function getHintReplyStep3() {
+      return {
+        lines: [
+          "重ねてみて、見える数字を上から教えてくれ"
+        ]
+      };
+    }
+
+    /* =========================
+       画像重ね合わせ謎
+       ========================= */
+
+    function openPuzzle() {
+      puzzleOverlay.classList.add("show");
+      puzzleOverlay.setAttribute("aria-hidden", "false");
+      resetKeyPosition();
+    }
+
+    function closePuzzle() {
+      puzzleOverlay.classList.remove("show");
+      puzzleOverlay.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("dragLock");
+      isDragging = false;
+      keyImage.classList.remove("dragging");
+    }
+
+    function resetKeyPosition() {
+      keyPos = { x: puzzleKeyStart.x, y: puzzleKeyStart.y };
+      applyKeyPosition();
+    }
+
+    function applyKeyPosition() {
+      keyImage.style.left = keyPos.x + "%";
+      keyImage.style.top = keyPos.y + "%";
+      keyImage.style.width = puzzleKeyWidth + "%";
+    }
+
+    function clampKeyPosition(nextX, nextY) {
+      const stageRect = puzzleStage.getBoundingClientRect();
+      const keyRect = keyImage.getBoundingClientRect();
+
+      const maxXPercent = 100 - (keyRect.width / stageRect.width) * 100;
+      const maxYPercent = 100 - (keyRect.height / stageRect.height) * 100;
+
+      return {
+        x: Math.max(0, Math.min(nextX, maxXPercent)),
+        y: Math.max(0, Math.min(nextY, maxYPercent))
+      };
+    }
+
+    function maybeSnapKey() {
+      const dx = keyPos.x - puzzleKeyTarget.x;
+      const dy = keyPos.y - puzzleKeyTarget.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= puzzleSnapDistance) {
+        keyPos = { x: puzzleKeyTarget.x, y: puzzleKeyTarget.y };
+        applyKeyPosition();
+      }
+    }
+
+    function isWithinCorrectRange() {
+      const dx = keyPos.x - puzzleKeyTarget.x;
+      const dy = keyPos.y - puzzleKeyTarget.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance <= puzzleCorrectRange;
+    }
+
+    function getPointFromEvent(event) {
+      if (event.touches && event.touches[0]) {
+        return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+      }
+      if (event.changedTouches && event.changedTouches[0]) {
+        return { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
+      }
+      return { x: event.clientX, y: event.clientY };
+    }
+
+    function startDrag(event) {
+      event.preventDefault();
+      const point = getPointFromEvent(event);
+      const keyRect = keyImage.getBoundingClientRect();
+
+      isDragging = true;
+      keyImage.classList.add("dragging");
+      document.body.classList.add("dragLock");
+
+      dragOffsetX = point.x - keyRect.left;
+      dragOffsetY = point.y - keyRect.top;
+    }
+
+    function moveDrag(event) {
+      if (!isDragging) return;
+      event.preventDefault();
+
+      const point = getPointFromEvent(event);
+      const stageRect = puzzleStage.getBoundingClientRect();
+
+      const nextXPx = point.x - stageRect.left - dragOffsetX;
+      const nextYPx = point.y - stageRect.top - dragOffsetY;
+
+      const nextXPercent = (nextXPx / stageRect.width) * 100;
+      const nextYPercent = (nextYPx / stageRect.height) * 100;
+
+      keyPos = clampKeyPosition(nextXPercent, nextYPercent);
+      applyKeyPosition();
+    }
+
+    function endDrag(event) {
+      if (!isDragging) return;
+      if (event) event.preventDefault();
+
+      isDragging = false;
+      keyImage.classList.remove("dragging");
+      document.body.classList.remove("dragLock");
+
+      maybeSnapKey();
+
+      // 正解位置の近くに置けたかは内部判定だけしておき、画面上には数字を表示しない
+      isWithinCorrectRange();
+    }
+
+    keyImage.addEventListener("mousedown", startDrag);
+    keyImage.addEventListener("touchstart", startDrag, { passive: false });
+
+    window.addEventListener("mousemove", moveDrag, { passive: false });
+    window.addEventListener("touchmove", moveDrag, { passive: false });
+
+    window.addEventListener("mouseup", endDrag);
+    window.addEventListener("touchend", endDrag, { passive: false });
+
+    window.addEventListener("touchcancel", endDrag, { passive: false });
+
+    window.addEventListener("resize", () => {
+      applyKeyPosition();
+    });
+  </script>
+</body>
+</html>
