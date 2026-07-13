@@ -394,7 +394,10 @@
       /* 謎画像を以前の約81％の大きさで表示します */
       width: 81%;
       margin: 0 auto;
-      overflow: hidden;
+
+      /* 鍵を謎画像の外まで移動できるようにします */
+      overflow: visible;
+
       background: #f4f6f8;
       border: 1px solid #d8dee8;
       border-radius: 12px;
@@ -405,7 +408,10 @@
       width: 100%;
       /* 謎画像を読み込んだ後、画像本来の縦横比に自動変更します */
       aspect-ratio: 1 / 1;
-      overflow: hidden;
+
+      /* 鍵が上下左右へはみ出しても表示します */
+      overflow: visible;
+
       background: #f2f2f2;
       touch-action: none;
       user-select: none;
@@ -646,8 +652,8 @@
 
       <div class="puzzle-content">
         <p class="puzzle-description">
-          鍵を指やマウスで動かし、画像に重ねて確認してください。<br>
-          見えた4桁の数字は、メール画面に戻って報告してください。
+          鍵を指やマウスで動かしてみよう！<br>
+          見えた4桁の数字は、メール画面に戻って報告してね。
         </p>
 
         <div class="puzzle-rotate-controls" aria-label="鍵の回転操作">
@@ -1014,30 +1020,37 @@
       const hasNfStory = includesAny(text, ["N.Fについて", "NFについて"]);
 
       const hasOverlayWord = text.includes(normalizeText("重"));
-      const hasPuzzleWord = includesAny(text, [
-        "謎",
+
+      // 反応ワード：
+      // 「鍵」＋
+      // 「？の位置」「?の位置」「メール画面」「メールの画面」「最初」のいずれか＋
+      // 「重」
+      const hasOverlayReference = includesAny(text, [
+        "？の位置",
+        "?の位置",
         "メール画面",
-        "最初やつ",
-        "最初のやつ"
+        "メールの画面",
+        "最初"
       ]);
 
-      const hasOverlayCombination = hasKey && hasPuzzleWord && hasOverlayWord;
+      const hasOverlayCombination =
+        hasKey && hasOverlayReference && hasOverlayWord;
 
       // 正解数字を最優先
       if (hasCorrectCode) {
         return {
           lines: [
-            "【青井直次郎、セキュリティロック解除　報告メールを受領した】",
+            "【古本持ち去り事件の報告を受領した】",
             "そうか…最初の謎と鍵はセットだったのか…！",
             "君の謎解き力にいつも助けられている。",
             "ありがとう。次も頼むよ。",
-            "しかし…このような謎をしかけて、青井直次郎は何がしたいのだろうな…？"
+            "しかし…君と謎を解いていると事件によく遭遇するな…"
           ],
           xPostText: file005PostText
         };
       }
 
-      // 「鍵」＋「謎／メール画面／最初のやつ」＋「重」
+      // 指定された組み合わせのときだけ、画像重ね合わせ謎を表示します。
       if (hasOverlayCombination) {
         return {
           lines: [
@@ -1118,7 +1131,7 @@
         ],
         controls: [
           {
-            label: "① 画像について",
+            label: "① 画像に",
             className: "hint-button",
             onClick: function () {
               renderReply(createHintStep1());
@@ -1551,16 +1564,14 @@
       const keyHeightPercent = (keyRect.height / stageRect.height) * 100;
 
       /*
-       * 鍵を縦方向にも動かせるように、少し余白を持たせた移動範囲にします。
-       * 鍵が大きい場合でも、上下へ動かして重ね位置を調整できます。
+       * 鍵全体を、謎画像の上下左右の外まで移動できる範囲です。
+       * 左・上は鍵1個分だけ外へ、右・下も鍵全体が外へ出る位置まで動かせます。
+       * 見失った場合は「鍵を最初の位置に戻す」で復帰できます。
        */
-      const dragMarginX = 10;
-      const dragMarginY = 12;
-
-      const minX = Math.min(0, 100 - keyWidthPercent) - dragMarginX;
-      const maxX = Math.max(0, 100 - keyWidthPercent) + dragMarginX;
-      const minY = Math.min(0, 100 - keyHeightPercent) - dragMarginY;
-      const maxY = Math.max(0, 100 - keyHeightPercent) + dragMarginY;
+      const minX = -keyWidthPercent;
+      const maxX = 100;
+      const minY = -keyHeightPercent;
+      const maxY = 100;
 
       return {
         x: Math.max(minX, Math.min(xPercent, maxX)),
