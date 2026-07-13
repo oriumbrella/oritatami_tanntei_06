@@ -401,7 +401,8 @@
     .puzzle-stage {
       position: relative;
       width: 100%;
-      aspect-ratio: 16 / 9;
+      /* 謎画像を読み込んだ後、画像本来の縦横比に自動変更します */
+      aspect-ratio: 1 / 1;
       overflow: hidden;
       background: #f2f2f2;
       touch-action: none;
@@ -662,20 +663,20 @@
     const puzzleKeyFile = "file006_鍵.png";
 
     // 画像重ね合わせ謎：鍵を時計回りに回転させる角度
-    // 今回の画像は横向きのため、90度にしています。
-    const puzzleKeyRotation = 90;
+    // 参考画像と同じ縦向きで使用するため0度です。
+    const puzzleKeyRotation = 0;
 
-    // 画像重ね合わせ謎：鍵の大きさ
-    // 1で元画像の大きさ・縦横比を維持します。
-    // 画面内に収まらない場合だけ、縦横比を保ったまま自動で縮小します。
-    const puzzleKeyScale = 1;
+    // 画像重ね合わせ謎：鍵の高さ
+    // 謎画像の高さに対する割合です。0.76で参考画像とほぼ同じ比率になります。
+    // 少し小さくする場合は0.70、大きくする場合は0.82などに変更してください。
+    const puzzleKeyHeightRatio = 0.76;
 
     // 画像重ね合わせ謎：鍵の初期位置（左上を基準にした％）
-    const puzzleKeyStart = { x: 5, y: 35 };
+    const puzzleKeyStart = { x: 3, y: 20 };
 
     // 画像重ね合わせ謎：鍵の正解位置（左上を基準にした％）
-    // 実際の見え方に合わせて、xとyを少しずつ調整してください。
-    const puzzleKeyTarget = { x: 42.5, y: 20.5 };
+    // 参考画像のように、謎画像の中央付近へ重なる位置です。
+    const puzzleKeyTarget = { x: 30, y: 5.5 };
 
     // 画像重ね合わせ謎：正解位置と判定する範囲（％）
     const puzzleCorrectRange = 3.5;
@@ -1125,50 +1126,20 @@
 
         sourceImage.onload = function () {
           try {
+            // アップロードされた鍵画像は678×1266pxです。
+            // 透明部分も含め、元画像全体をそのまま使います。
             const sourceCanvas = document.createElement("canvas");
-            const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+            const sourceContext = sourceCanvas.getContext("2d");
 
             sourceCanvas.width = sourceImage.naturalWidth;
             sourceCanvas.height = sourceImage.naturalHeight;
+            sourceContext.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
             sourceContext.drawImage(sourceImage, 0, 0);
 
-            const imageData = sourceContext.getImageData(
-              0,
-              0,
-              sourceCanvas.width,
-              sourceCanvas.height
-            );
+            // 横向きにした場合は1266×678pxになります。
+            // 横幅と高さには必ず同じ倍率を使うため、引き延ばされません。
+            drawRotatedKey(sourceCanvas, puzzleKeyRotation);
 
-            const bounds = findVisibleBounds(
-              imageData.data,
-              sourceCanvas.width,
-              sourceCanvas.height
-            );
-
-            const cropWidth = Math.max(1, bounds.right - bounds.left + 1);
-            const cropHeight = Math.max(1, bounds.bottom - bounds.top + 1);
-
-            const croppedCanvas = document.createElement("canvas");
-            const croppedContext = croppedCanvas.getContext("2d");
-            croppedCanvas.width = cropWidth;
-            croppedCanvas.height = cropHeight;
-
-            croppedContext.drawImage(
-              sourceCanvas,
-              bounds.left,
-              bounds.top,
-              cropWidth,
-              cropHeight,
-              0,
-              0,
-              cropWidth,
-              cropHeight
-            );
-
-            drawRotatedKey(croppedCanvas, puzzleKeyRotation);
-
-            // 回転後のキャンバス本来の大きさを保存します。
-            // 横幅と高さに同じ倍率を使うため、鍵画像が引き延ばされません。
             keyNaturalSize.width = puzzleKeyCanvas.width;
             keyNaturalSize.height = puzzleKeyCanvas.height;
 
@@ -1281,23 +1252,36 @@
 
       const stageRect = puzzleStage.getBoundingClientRect();
 
-      // 鍵画像本来の大きさに、1つの共通倍率だけを掛けます。
-      // 横幅と高さを別々に計算しないため、縦横比が崩れません。
-      const requestedWidth = keyNaturalSize.width * puzzleKeyScale;
-      const requestedHeight = keyNaturalSize.height * puzzleKeyScale;
+      if (stageRect.width === 0 || stageRect.height === 0) {
+        return;
+      }
 
-      // スマートフォンなど、画像が謎画面より大きい場合だけ均等に縮小します。
-      const fitScale = Math.min(
-        1,
-        (stageRect.width * 0.98) / requestedWidth,
-        (stageRect.height * 0.98) / requestedHeight
-      );
+      // 参考画像と同じように、鍵の高さを謎画像の約76％にします。
+      // 横幅は鍵画像本来の縦横比から自動計算するため、引き延ばされません。
+      const naturalAspect = keyNaturalSize.width / keyNaturalSize.height;
+      let displayHeight = stageRect.height * puzzleKeyHeightRatio;
+      let displayWidth = displayHeight * naturalAspect;
 
-      const displayWidth = requestedWidth * fitScale;
-      const displayHeight = requestedHeight * fitScale;
+      // 横幅が画面を超える場合だけ、縦横比を維持したまま均等に縮小します。
+      if (displayWidth > stageRect.width * 0.98) {
+        const fitScale = (stageRect.width * 0.98) / displayWidth;
+        displayWidth *= fitScale;
+        displayHeight *= fitScale;
+      }
 
       puzzleKeyCanvas.style.width = displayWidth + "px";
       puzzleKeyCanvas.style.height = displayHeight + "px";
+    }
+
+    // 謎画像の実際の縦横比を、そのまま操作画面へ反映します。
+    // 画像が正方形でも長方形でも、余白や引き延ばしが発生しません。
+    function updatePuzzleStageRatio() {
+      if (!puzzlePaper.naturalWidth || !puzzlePaper.naturalHeight) {
+        return;
+      }
+
+      puzzleStage.style.aspectRatio =
+        puzzlePaper.naturalWidth + " / " + puzzlePaper.naturalHeight;
     }
 
     /* =========================================================
@@ -1305,11 +1289,25 @@
        ========================================================= */
 
     resetKeyButton.addEventListener("click", resetKeyPosition);
-    closePuzzleButton.addEventListener("click", closePuzzle);
+    // 「資料を閉じる」を押したら、添付資料と返信メールを閉じ、
+    // 最初のメール入力画面へ戻します。
+    closePuzzleButton.addEventListener("click", closeReply);
 
     puzzleOverlay.addEventListener("click", function (event) {
       if (event.target === puzzleOverlay) {
         closePuzzle();
+      }
+    });
+
+    puzzlePaper.addEventListener("load", function () {
+      updatePuzzleStageRatio();
+
+      if (puzzleOverlay.classList.contains("show")) {
+        window.requestAnimationFrame(function () {
+          updateKeyDisplaySize();
+          keyPosition = clampKeyPosition(keyPosition.x, keyPosition.y);
+          applyKeyPosition();
+        });
       }
     });
 
@@ -1337,6 +1335,8 @@
       clearPuzzleError();
       puzzleOverlay.classList.add("show");
       puzzleOverlay.setAttribute("aria-hidden", "false");
+
+      updatePuzzleStageRatio();
 
       window.requestAnimationFrame(function () {
         if (keyPrepared) {
