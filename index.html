@@ -471,6 +471,36 @@
       display: block;
     }
 
+    .puzzle-rotate-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+
+    .puzzle-rotate-button {
+      padding: 9px 13px;
+      border: 0;
+      border-radius: 9px;
+      background: #edf3ff;
+      color: #1f3f78;
+      font-size: 13px;
+      line-height: 1.4;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .puzzle-rotate-button:hover {
+      transform: translateY(-1px);
+      background: #dfeaff;
+    }
+
+    .puzzle-rotate-button:active {
+      transform: translateY(0);
+    }
+
     .puzzle-actions {
       display: flex;
       flex-wrap: wrap;
@@ -620,6 +650,20 @@
           見えた4桁の数字は、メール画面に戻って報告してください。
         </p>
 
+        <div class="puzzle-rotate-controls" aria-label="鍵の回転操作">
+          <button
+            id="rotateKeyLeftButton"
+            class="puzzle-rotate-button"
+            type="button"
+          >↶ 15度左回転</button>
+
+          <button
+            id="rotateKeyRightButton"
+            class="puzzle-rotate-button"
+            type="button"
+          >15度右回転 ↷</button>
+        </div>
+
         <div class="puzzle-stage-frame">
           <div id="puzzleStage" class="puzzle-stage">
             <!-- 下に固定する画像 -->
@@ -666,7 +710,10 @@
 
     // 画像重ね合わせ謎：鍵の最初の角度
     // マイナスの数値は左回転です。最初は左へ30度傾けます。
-    const puzzleKeyRotation = -30;
+    const puzzleKeyInitialRotation = -30;
+
+    // 回転ボタンを1回押した時の角度
+    const puzzleKeyRotationStep = 15;
 
     // 画像重ね合わせ謎：鍵の高さ
     // 鍵の大きさは前回から変更しません。
@@ -723,6 +770,8 @@
     const puzzlePaper = document.getElementById("puzzlePaper");
     const puzzleKeyCanvas = document.getElementById("puzzleKeyCanvas");
     const puzzleError = document.getElementById("puzzleError");
+    const rotateKeyLeftButton = document.getElementById("rotateKeyLeftButton");
+    const rotateKeyRightButton = document.getElementById("rotateKeyRightButton");
     const resetKeyButton = document.getElementById("resetKeyButton");
     const closePuzzleButton = document.getElementById("closePuzzleButton");
 
@@ -753,6 +802,12 @@
       width: 1,
       height: 1
     };
+
+    // 鍵画像の元データ。回転するたびにここから描き直します。
+    let keySourceCanvas = null;
+
+    // 最初は左へ30度傾いた状態です。
+    let keyRotation = puzzleKeyInitialRotation;
 
     let keyPrepared = false;
     let dragging = false;
@@ -1145,11 +1200,15 @@
             sourceContext.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
             sourceContext.drawImage(sourceImage, 0, 0);
 
-            // 横幅と高さには必ず同じ倍率を使うため、引き延ばされません。
-            drawRotatedKey(sourceCanvas, puzzleKeyRotation);
+            // 回転操作のたびに描き直せるよう、元画像を保持します。
+            keySourceCanvas = sourceCanvas;
+            keyRotation = puzzleKeyInitialRotation;
 
-            keySourceNaturalSize.width = sourceCanvas.width;
-            keySourceNaturalSize.height = sourceCanvas.height;
+            // 横幅と高さには必ず同じ倍率を使うため、引き延ばされません。
+            drawRotatedKey(keySourceCanvas, keyRotation);
+
+            keySourceNaturalSize.width = keySourceCanvas.width;
+            keySourceNaturalSize.height = keySourceCanvas.height;
             keyNaturalSize.width = puzzleKeyCanvas.width;
             keyNaturalSize.height = puzzleKeyCanvas.height;
 
@@ -1267,6 +1326,59 @@
       keyCanvasContext.restore();
     }
 
+    function rotateKeyBy(degrees) {
+      if (!keyPrepared || !keySourceCanvas) {
+        return;
+      }
+
+      stopKeyDrag();
+
+      const stageRect = puzzleStage.getBoundingClientRect();
+      const oldKeyRect = puzzleKeyCanvas.getBoundingClientRect();
+
+      // 回転前の鍵の中心位置を保存します。
+      const centerX = oldKeyRect.left - stageRect.left + oldKeyRect.width / 2;
+      const centerY = oldKeyRect.top - stageRect.top + oldKeyRect.height / 2;
+
+      keyRotation += degrees;
+
+      // 角度が大きくなりすぎないよう、-180～180度の範囲に整えます。
+      keyRotation = ((keyRotation + 180) % 360 + 360) % 360 - 180;
+
+      drawRotatedKey(keySourceCanvas, keyRotation);
+
+      keyNaturalSize.width = puzzleKeyCanvas.width;
+      keyNaturalSize.height = puzzleKeyCanvas.height;
+
+      updateKeyDisplaySize();
+
+      const newKeyRect = puzzleKeyCanvas.getBoundingClientRect();
+
+      // 鍵の中心位置を変えずに回転させます。
+      const newLeftPixels = centerX - newKeyRect.width / 2;
+      const newTopPixels = centerY - newKeyRect.height / 2;
+
+      const newXPercent = (newLeftPixels / stageRect.width) * 100;
+      const newYPercent = (newTopPixels / stageRect.height) * 100;
+
+      keyPosition = clampKeyPosition(newXPercent, newYPercent);
+      applyKeyPosition();
+    }
+
+    function resetKeyRotation() {
+      if (!keyPrepared || !keySourceCanvas) {
+        return;
+      }
+
+      keyRotation = puzzleKeyInitialRotation;
+      drawRotatedKey(keySourceCanvas, keyRotation);
+
+      keyNaturalSize.width = puzzleKeyCanvas.width;
+      keyNaturalSize.height = puzzleKeyCanvas.height;
+
+      updateKeyDisplaySize();
+    }
+
     function updateKeyDisplaySize() {
       if (!keyPrepared) {
         return;
@@ -1324,7 +1436,19 @@
        画像重ね合わせ謎：開閉とドラッグ
        ========================================================= */
 
-    resetKeyButton.addEventListener("click", resetKeyPosition);
+    rotateKeyLeftButton.addEventListener("click", function () {
+      rotateKeyBy(-puzzleKeyRotationStep);
+    });
+
+    rotateKeyRightButton.addEventListener("click", function () {
+      rotateKeyBy(puzzleKeyRotationStep);
+    });
+
+    resetKeyButton.addEventListener("click", function () {
+      resetKeyRotation();
+      resetKeyPosition();
+    });
+
     // 「資料を閉じる」を押したら、添付資料と返信メールを閉じ、
     // 最初のメール入力画面へ戻します。
     closePuzzleButton.addEventListener("click", closeReply);
@@ -1376,7 +1500,7 @@
 
       window.requestAnimationFrame(function () {
         if (keyPrepared) {
-          updateKeyDisplaySize();
+          resetKeyRotation();
           resetKeyPosition();
           return;
         }
