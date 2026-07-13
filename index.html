@@ -478,6 +478,8 @@
     }
 
     .puzzle-rotate-controls {
+      position: relative;
+      z-index: 20;
       display: flex;
       flex-wrap: wrap;
       justify-content: flex-start;
@@ -508,6 +510,8 @@
     }
 
     .puzzle-actions {
+      position: relative;
+      z-index: 20;
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
@@ -1023,13 +1027,16 @@
 
       // 反応ワード：
       // 「鍵」＋
-      // 「？の位置」「?の位置」「メール画面」「メールの画面」「最初」のいずれか＋
+      // 「？の位置」「?の位置」「メール画面」「メールの画面」
+      // 「メールの画像」「メール画像」「最初」のいずれか＋
       // 「重」
       const hasOverlayReference = includesAny(text, [
         "？の位置",
         "?の位置",
         "メール画面",
         "メールの画面",
+        "メールの画像",
+        "メール画像",
         "最初"
       ]);
 
@@ -1449,11 +1456,15 @@
        画像重ね合わせ謎：開閉とドラッグ
        ========================================================= */
 
-    rotateKeyLeftButton.addEventListener("click", function () {
+    rotateKeyLeftButton.addEventListener("click", function (event) {
+      event.preventDefault();
+      stopKeyDrag();
       rotateKeyBy(-puzzleKeyRotationStep);
     });
 
-    rotateKeyRightButton.addEventListener("click", function () {
+    rotateKeyRightButton.addEventListener("click", function (event) {
+      event.preventDefault();
+      stopKeyDrag();
       rotateKeyBy(puzzleKeyRotationStep);
     });
 
@@ -1635,6 +1646,19 @@
     }
 
     function stopKeyDrag() {
+      // ドラッグ後も鍵がクリックを捕まえ続けないよう、
+      // ポインター取得を確実に解除します。
+      if (
+        activePointerId !== null &&
+        puzzleKeyCanvas.hasPointerCapture(activePointerId)
+      ) {
+        try {
+          puzzleKeyCanvas.releasePointerCapture(activePointerId);
+        } catch (error) {
+          // 既に解除されている場合は、そのまま続行します。
+        }
+      }
+
       dragging = false;
       activePointerId = null;
       puzzleKeyCanvas.classList.remove("dragging");
