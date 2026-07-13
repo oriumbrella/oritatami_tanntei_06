@@ -391,7 +391,9 @@
     }
 
     .puzzle-stage-frame {
-      width: 100%;
+      /* 謎画像を以前の約81％の大きさで表示します */
+      width: 81%;
+      margin: 0 auto;
       overflow: hidden;
       background: #f4f6f8;
       border: 1px solid #d8dee8;
@@ -667,8 +669,8 @@
     const puzzleKeyRotation = 0;
 
     // 画像重ね合わせ謎：鍵の高さ
-    // 新しい鍵画像を、参考画像とほぼ同じ大きさで表示する設定です。
-    // 謎画像の高さに対して約81％の高さで表示します。
+    // 鍵の大きさは前回から変更しません。
+    // 縮小前の謎画像の高さに対して約81％で表示します。
     const puzzleKeyHeightRatio = 0.81;
 
     // 画像重ね合わせ謎：鍵の初期位置（左上を基準にした％）
@@ -1250,24 +1252,31 @@
       }
 
       const stageRect = puzzleStage.getBoundingClientRect();
+      const puzzleContent = puzzleStage.closest(".puzzle-content");
 
-      if (stageRect.width === 0 || stageRect.height === 0) {
+      if (
+        stageRect.width === 0 ||
+        stageRect.height === 0 ||
+        !puzzleContent
+      ) {
         return;
       }
 
-      // 参考画像と同じように、鍵の高さを謎画像の約76％にします。
-      // 横幅は鍵画像本来の縦横比から自動計算するため、引き延ばされません。
+      /*
+       * 謎画像の表示だけを81％へ縮小し、鍵は以前と同じ大きさに保ちます。
+       * 以前の謎画像枠（横幅100％）を基準に鍵の高さを計算します。
+       */
+      const contentStyle = window.getComputedStyle(puzzleContent);
+      const contentInnerWidth =
+        puzzleContent.clientWidth -
+        parseFloat(contentStyle.paddingLeft || "0") -
+        parseFloat(contentStyle.paddingRight || "0");
+
       const naturalAspect = keyNaturalSize.width / keyNaturalSize.height;
-      let displayHeight = stageRect.height * puzzleKeyHeightRatio;
+      let displayHeight = contentInnerWidth * puzzleKeyHeightRatio;
       let displayWidth = displayHeight * naturalAspect;
 
-      // 横幅が画面を超える場合だけ、縦横比を維持したまま均等に縮小します。
-      if (displayWidth > stageRect.width * 0.98) {
-        const fitScale = (stageRect.width * 0.98) / displayWidth;
-        displayWidth *= fitScale;
-        displayHeight *= fitScale;
-      }
-
+      // 鍵の縦横比は必ず維持します。
       puzzleKeyCanvas.style.width = displayWidth + "px";
       puzzleKeyCanvas.style.height = displayHeight + "px";
     }
