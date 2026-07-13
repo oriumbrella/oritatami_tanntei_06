@@ -429,6 +429,8 @@
       z-index: 2;
       display: block;
       max-width: none;
+      max-height: none;
+      object-fit: contain;
       cursor: grab;
       touch-action: none;
       user-select: none;
@@ -664,8 +666,9 @@
     const puzzleKeyRotation = 90;
 
     // 画像重ね合わせ謎：鍵の大きさ
-    // 元画像の大きさを基準にします。小さくしたい場合は0.70などに変更してください。
-    const puzzleKeyScale = 0.75;
+    // 1で元画像の大きさ・縦横比を維持します。
+    // 画面内に収まらない場合だけ、縦横比を保ったまま自動で縮小します。
+    const puzzleKeyScale = 1;
 
     // 画像重ね合わせ謎：鍵の初期位置（左上を基準にした％）
     const puzzleKeyStart = { x: 5, y: 35 };
@@ -734,9 +737,11 @@
       y: puzzleKeyStart.y
     };
 
-    let keyDisplayRatio = {
-      width: 0.25,
-      height: 0.58
+    // 回転・切り抜き後の鍵画像本来のピクセルサイズ
+    // 横幅と高さを別々に引き延ばさず、常に同じ倍率で表示します。
+    let keyNaturalSize = {
+      width: 1,
+      height: 1
     };
 
     let keyPrepared = false;
@@ -1162,16 +1167,10 @@
 
             drawRotatedKey(croppedCanvas, puzzleKeyRotation);
 
-            // 元画像と謎画像の比率を基準に鍵の表示サイズを決定
-            const rotationIsSideways = Math.abs(puzzleKeyRotation % 180) === 90;
-            const rotatedPixelWidth = rotationIsSideways ? cropHeight : cropWidth;
-            const rotatedPixelHeight = rotationIsSideways ? cropWidth : cropHeight;
-
-            keyDisplayRatio.width =
-              (rotatedPixelWidth / sourceImage.naturalWidth) * puzzleKeyScale;
-
-            keyDisplayRatio.height =
-              (rotatedPixelHeight / sourceImage.naturalHeight) * puzzleKeyScale;
+            // 回転後のキャンバス本来の大きさを保存します。
+            // 横幅と高さに同じ倍率を使うため、鍵画像が引き延ばされません。
+            keyNaturalSize.width = puzzleKeyCanvas.width;
+            keyNaturalSize.height = puzzleKeyCanvas.height;
 
             keyPrepared = true;
             updateKeyDisplaySize();
@@ -1281,11 +1280,24 @@
       }
 
       const stageRect = puzzleStage.getBoundingClientRect();
-      const width = stageRect.width * keyDisplayRatio.width;
-      const height = stageRect.height * keyDisplayRatio.height;
 
-      puzzleKeyCanvas.style.width = width + "px";
-      puzzleKeyCanvas.style.height = height + "px";
+      // 鍵画像本来の大きさに、1つの共通倍率だけを掛けます。
+      // 横幅と高さを別々に計算しないため、縦横比が崩れません。
+      const requestedWidth = keyNaturalSize.width * puzzleKeyScale;
+      const requestedHeight = keyNaturalSize.height * puzzleKeyScale;
+
+      // スマートフォンなど、画像が謎画面より大きい場合だけ均等に縮小します。
+      const fitScale = Math.min(
+        1,
+        (stageRect.width * 0.98) / requestedWidth,
+        (stageRect.height * 0.98) / requestedHeight
+      );
+
+      const displayWidth = requestedWidth * fitScale;
+      const displayHeight = requestedHeight * fitScale;
+
+      puzzleKeyCanvas.style.width = displayWidth + "px";
+      puzzleKeyCanvas.style.height = displayHeight + "px";
     }
 
     /* =========================================================
