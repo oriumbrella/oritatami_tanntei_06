@@ -664,9 +664,9 @@
     const puzzlePaperFile = "file006_謎.jpg";
     const puzzleKeyFile = "file006_鍵.png";
 
-    // 画像重ね合わせ謎：鍵を時計回りに回転させる角度
-    // 参考画像と同じ縦向きで使用するため0度です。
-    const puzzleKeyRotation = 0;
+    // 画像重ね合わせ謎：鍵の最初の角度
+    // マイナスの数値は左回転です。最初は左へ30度傾けます。
+    const puzzleKeyRotation = -30;
 
     // 画像重ね合わせ謎：鍵の高さ
     // 鍵の大きさは前回から変更しません。
@@ -743,6 +743,13 @@
     // 回転・切り抜き後の鍵画像本来のピクセルサイズ
     // 横幅と高さを別々に引き延ばさず、常に同じ倍率で表示します。
     let keyNaturalSize = {
+      width: 1,
+      height: 1
+    };
+
+    // 回転前の鍵画像本体の大きさ
+    // 回転しても鍵そのものの表示サイズが変わらないように使います。
+    let keySourceNaturalSize = {
       width: 1,
       height: 1
     };
@@ -1141,6 +1148,8 @@
             // 横幅と高さには必ず同じ倍率を使うため、引き延ばされません。
             drawRotatedKey(sourceCanvas, puzzleKeyRotation);
 
+            keySourceNaturalSize.width = sourceCanvas.width;
+            keySourceNaturalSize.height = sourceCanvas.height;
             keyNaturalSize.width = puzzleKeyCanvas.width;
             keyNaturalSize.height = puzzleKeyCanvas.height;
 
@@ -1218,12 +1227,24 @@
     }
 
     function drawRotatedKey(sourceCanvas, degrees) {
-      const normalizedDegrees = ((degrees % 360) + 360) % 360;
-      const radians = normalizedDegrees * Math.PI / 180;
-      const sideways = normalizedDegrees === 90 || normalizedDegrees === 270;
+      const radians = degrees * Math.PI / 180;
+      const absoluteCos = Math.abs(Math.cos(radians));
+      const absoluteSin = Math.abs(Math.sin(radians));
 
-      puzzleKeyCanvas.width = sideways ? sourceCanvas.height : sourceCanvas.width;
-      puzzleKeyCanvas.height = sideways ? sourceCanvas.width : sourceCanvas.height;
+      // 30度などの角度でも鍵が端で切れないように、
+      // 回転後の画像全体が収まるキャンバスサイズを計算します。
+      const rotatedWidth = Math.ceil(
+        sourceCanvas.width * absoluteCos +
+        sourceCanvas.height * absoluteSin
+      );
+
+      const rotatedHeight = Math.ceil(
+        sourceCanvas.width * absoluteSin +
+        sourceCanvas.height * absoluteCos
+      );
+
+      puzzleKeyCanvas.width = rotatedWidth;
+      puzzleKeyCanvas.height = rotatedHeight;
 
       keyCanvasContext.clearRect(
         0,
@@ -1272,11 +1293,18 @@
         parseFloat(contentStyle.paddingLeft || "0") -
         parseFloat(contentStyle.paddingRight || "0");
 
-      const naturalAspect = keyNaturalSize.width / keyNaturalSize.height;
-      let displayHeight = contentInnerWidth * puzzleKeyHeightRatio;
-      let displayWidth = displayHeight * naturalAspect;
+      // 回転前の鍵の高さを基準に表示倍率を決めます。
+      // その倍率を回転後キャンバスにも同じように掛けるため、
+      // 左へ30度傾けても鍵本体の大きさは変わりません。
+      const baseKeyHeight = contentInnerWidth * puzzleKeyHeightRatio;
+      const displayScale =
+        baseKeyHeight / keySourceNaturalSize.height;
 
-      // 鍵の縦横比は必ず維持します。
+      const displayWidth =
+        keyNaturalSize.width * displayScale;
+      const displayHeight =
+        keyNaturalSize.height * displayScale;
+
       puzzleKeyCanvas.style.width = displayWidth + "px";
       puzzleKeyCanvas.style.height = displayHeight + "px";
     }
@@ -1398,9 +1426,21 @@
       const keyWidthPercent = (keyRect.width / stageRect.width) * 100;
       const keyHeightPercent = (keyRect.height / stageRect.height) * 100;
 
+      /*
+       * 鍵を縦方向にも動かせるように、少し余白を持たせた移動範囲にします。
+       * 鍵が大きい場合でも、上下へ動かして重ね位置を調整できます。
+       */
+      const dragMarginX = 10;
+      const dragMarginY = 12;
+
+      const minX = Math.min(0, 100 - keyWidthPercent) - dragMarginX;
+      const maxX = Math.max(0, 100 - keyWidthPercent) + dragMarginX;
+      const minY = Math.min(0, 100 - keyHeightPercent) - dragMarginY;
+      const maxY = Math.max(0, 100 - keyHeightPercent) + dragMarginY;
+
       return {
-        x: Math.max(0, Math.min(xPercent, 100 - keyWidthPercent)),
-        y: Math.max(0, Math.min(yPercent, 100 - keyHeightPercent))
+        x: Math.max(minX, Math.min(xPercent, maxX)),
+        y: Math.max(minY, Math.min(yPercent, maxY))
       };
     }
 
