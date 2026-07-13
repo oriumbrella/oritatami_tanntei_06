@@ -667,16 +667,16 @@
     const puzzleKeyRotation = 0;
 
     // 画像重ね合わせ謎：鍵の高さ
-    // 謎画像の高さに対する割合です。0.76で参考画像とほぼ同じ比率になります。
-    // 少し小さくする場合は0.70、大きくする場合は0.82などに変更してください。
-    const puzzleKeyHeightRatio = 0.76;
+    // 新しい鍵画像を、参考画像とほぼ同じ大きさで表示する設定です。
+    // 謎画像の高さに対して約81％の高さで表示します。
+    const puzzleKeyHeightRatio = 0.81;
 
     // 画像重ね合わせ謎：鍵の初期位置（左上を基準にした％）
     const puzzleKeyStart = { x: 3, y: 20 };
 
     // 画像重ね合わせ謎：鍵の正解位置（左上を基準にした％）
-    // 参考画像のように、謎画像の中央付近へ重なる位置です。
-    const puzzleKeyTarget = { x: 30, y: 5.5 };
+    // 新しい鍵画像の透明余白を含め、参考画像と同じ位置に重なる設定です。
+    const puzzleKeyTarget = { x: 33.6, y: 4.1 };
 
     // 画像重ね合わせ謎：正解位置と判定する範囲（％）
     const puzzleCorrectRange = 3.5;
@@ -1126,7 +1126,7 @@
 
         sourceImage.onload = function () {
           try {
-            // アップロードされた鍵画像は678×1266pxです。
+            // 新しい鍵画像は503×1005pxです。
             // 透明部分も含め、元画像全体をそのまま使います。
             const sourceCanvas = document.createElement("canvas");
             const sourceContext = sourceCanvas.getContext("2d");
@@ -1136,7 +1136,6 @@
             sourceContext.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
             sourceContext.drawImage(sourceImage, 0, 0);
 
-            // 横向きにした場合は1266×678pxになります。
             // 横幅と高さには必ず同じ倍率を使うため、引き延ばされません。
             drawRotatedKey(sourceCanvas, puzzleKeyRotation);
 
